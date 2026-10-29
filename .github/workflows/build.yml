@@ -56,7 +56,10 @@ jobs:
           ./windows/build.ps1
           ./tests/windows/verify.ps1
           $compiler=Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
-          & $compiler /nologo /out:dist/windows/UiSmoke.exe /reference:dist/windows/MidiToVocal.exe /reference:System.Windows.Forms.dll tests/windows/UiSmoke.cs
+          $smokeOutput=Join-Path $PWD 'dist\windows\UiSmoke.exe'
+          $appAssembly=Join-Path $PWD 'dist\windows\MidiToVocal.exe'
+          $smokeSource=Join-Path $PWD 'tests\windows\UiSmoke.cs'
+          & $compiler /nologo ("/out:"+$smokeOutput) ("/reference:"+$appAssembly) /reference:System.Windows.Forms.dll $smokeSource
           if($LASTEXITCODE -ne 0){throw 'Smoke check build failed'}
           & ./dist/windows/UiSmoke.exe tests/windows
           if($LASTEXITCODE -ne 0){throw 'Smoke check failed'}
