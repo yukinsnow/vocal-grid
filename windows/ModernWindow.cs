@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using System.Threading.Tasks;
+using System.Web.Script.Serialization;
 
 public class ConverterWindow : Form {
     static readonly Color Ink=Color.FromArgb(27,40,55), Muted=Color.FromArgb(104,118,132), Accent=Color.FromArgb(12,126,112), Line=Color.FromArgb(222,231,234);
@@ -25,7 +26,7 @@ public class ConverterWindow : Form {
         this.settingsPath=settingsPath??AppPreferences.SettingsPath;this.persist=persist;
         string warning;var pref=AppPreferences.Load(this.settingsPath,out warning);var opt=pref.Options;
 
-        Text="Vocal Grid · MIDI 转 SVP · v1.1";ClientSize=new Size(860,600);AutoScaleMode=AutoScaleMode.None;
+        Text="Vocal Grid · MIDI 转 SVP · v1.1.1";ClientSize=new Size(860,600);AutoScaleMode=AutoScaleMode.None;
         BackColor=Color.FromArgb(244,247,248);ForeColor=Ink;Font=new Font("Microsoft YaHei UI",9F);
         StartPosition=FormStartPosition.CenterScreen;MinimumSize=new Size(876,639);MaximizeBox=false;
         Icon=Icon.ExtractAssociatedIcon(Application.ExecutablePath)??SystemIcons.Application;
@@ -36,7 +37,7 @@ public class ConverterWindow : Form {
         credit.LinkClicked+=(s,e)=>{try{System.Diagnostics.Process.Start("https://github.com/yukinsnow/vocal-grid");}catch(Exception ex){status.Text=ex.Message;}};
         content=new Panel{Dock=DockStyle.Fill,AutoScroll=false,BackColor=BackColor};Controls.Add(content);content.BringToFront();
         var logo=new PictureBox{Left=20,Top=14,Width=36,Height=36,SizeMode=PictureBoxSizeMode.Zoom,Image=Icon.ToBitmap()};content.Controls.Add(logo);
-        AddLabel(content,"Vocal Grid",66,12,300,32,18,Ink,FontStyle.Bold);AddLabel(content,"多 MIDI → 一个 SVP · 所有文件从同一起点合并",360,23,470,22,9,Muted);
+        AddLabel(content,"Vocal Grid",66,12,300,36,18,Ink,FontStyle.Bold);AddLabel(content,"多 MIDI → SVP",380,17,450,34,10,Muted);
         var import=Card(20,62,820,90);
         AddLabel(import,"导入 MIDI",14,9,110,22,10,Ink,FontStyle.Bold);AddLabel(import,"可多选或拖入文件 / 文件夹；输出默认在首个文件目录",132,10,665,22,9,Muted);
         input=Field(import,"",14,40,548);input.ReadOnly=true;
@@ -47,16 +48,16 @@ public class ConverterWindow : Form {
         AddLabel(settings,"BPM",14,37,90,20,9,Muted);AddLabel(settings,"拍号",128,37,155,20,9,Muted);AddLabel(settings,"歌词",300,37,100,20,9,Muted);
         bpm=Number(settings,14,60,100,5,999,(decimal)pref.Bpm);bpm.DecimalPlaces=2;
         num=Number(settings,128,60,60,1,64,pref.Numerator);AddLabel(settings,"/",192,62,16,23,10,Muted);den=Select(settings,212,60,70,new object[]{1,2,4,8,16,32,64},pref.Denominator);lyric=Field(settings,pref.Lyric,300,57,114);
-        AddLabel(settings,"声库标记 database.name（也可粘贴完整 database JSON）",14,100,400,20,8,Muted);
+        AddLabel(settings,"声库名称（默认 Mai 一代）",14,100,400,22,9,Muted);
         string singerText=pref.Singer;if(singerText.Contains("|")&&!singerText.StartsWith("{")){string n;bool g;MidiToVocal.ParseSinger(singerText,out n,out g);singerText=g&&n=="Mai"?"Mai 2":n;}
         singer=Field(settings,singerText,14,123,278);
-        var loadVoice=Button(settings,"从 SVP 读取",302,122,112,false);loadVoice.Click+=(s,e)=>{try{using(var d=new OpenFileDialog{Filter="SVP 工程|*.svp"})if(d.ShowDialog(this)==DialogResult.OK)singer.Text=MidiToVocal.ReadSingerFromProject(d.FileName);}catch(Exception ex){MessageBox.Show(this,ex.Message,"声库读取");}};
-        AddLabel(settings,"Mai / Mai 2；星尘一代：MEDIUM5·Stardust",14,160,400,20,8,Muted);
+        SetSingerMarker(singerText);
+        var loadVoice=Button(settings,"从 SVP 读取",302,122,112,false);loadVoice.Click+=(s,e)=>{try{using(var d=new OpenFileDialog{Filter="SVP 工程|*.svp"})if(d.ShowDialog(this)==DialogResult.OK)SetSingerMarker(MidiToVocal.ReadSingerFromProject(d.FileName));}catch(Exception ex){MessageBox.Show(this,ex.Message,"声库读取");}};
         align=Check(settings,"量化音符",14,188,115,opt.AlignNotes);grid=Select(settings,136,186,75,new object[]{4,8,16,32,64},opt.GridDivision);
         AddLabel(settings,"分网格（SV2 工具栏网格为本机设置）",220,190,200,20,7.5F,Muted);
         align.CheckedChanged+=(s,e)=>grid.Enabled=align.Checked;grid.Enabled=align.Checked;
         scaleEnabled=Check(settings,"调式音阶",14,228,115,opt.ScaleEnabled);scaleRoot=Select(settings,136,225,75,ProjectOptions.Roots.Cast<object>().ToArray(),opt.ScaleRoot);
-        scaleType=Select(settings,220,225,194,new object[]{"大调 Major","自然小调"},opt.ScaleType=="Minor"?"自然小调":"大调 Major");
+        scaleType=Select(settings,220,225,194,new object[]{"自然大调","自然小调"},opt.ScaleType=="Minor"?"自然小调":"自然大调");
         scaleEnabled.CheckedChanged+=(s,e)=>{scaleRoot.Enabled=scaleType.Enabled=scaleEnabled.Checked;};scaleRoot.Enabled=scaleType.Enabled=scaleEnabled.Checked;
         var exp=Card(462,164,378,266);AddLabel(exp,"音频导出",14,9,340,23,10,Ink,FontStyle.Bold);
         AddLabel(exp,"输出内容",14,37,170,20,9,Muted);AddLabel(exp,"声道",198,37,165,20,9,Muted);
@@ -87,7 +88,10 @@ public class ConverterWindow : Form {
         for(int i=0;i<list.Count;i++){var c=list[i];var r=bounds[i];c.Font=new Font(fonts[i].FontFamily,fonts[i].Size*factor/dpi,fonts[i].Style);c.Bounds=new Rectangle((int)(r.X*factor),(int)(r.Y*factor),(int)(r.Width*factor),(int)(r.Height*factor));var p=c.Padding;c.Padding=new Padding((int)(p.Left*factor),(int)(p.Top*factor),(int)(p.Right*factor),(int)(p.Bottom*factor));}
         MinimumSize=Size.Empty;ClientSize=new Size((int)(860*factor),(int)(600*factor));MinimumSize=Size;content.AutoScrollMinSize=Size.Empty;
         for(int i=0;i<list.Count;i++){list[i].Dock=docks[i];list[i].Anchor=anchors[i];list[i].ResumeLayout(true);}ResumeLayout(true);
-    }    public AppPreferences CapturePreferences(){return new AppPreferences{Singer=singer.Text,Lyric=lyric.Text,Bpm=(double)bpm.Value,Numerator=(int)num.Value,Denominator=(int)den.SelectedItem,FollowInput=followInput.Checked,ManualOutput=followInput.Checked?"":output.Text,Options=new ProjectOptions{AlignNotes=align.Checked,GridDivision=(int)grid.SelectedItem,ScaleEnabled=scaleEnabled.Checked,ScaleRoot=(string)scaleRoot.SelectedItem,ScaleType=scaleType.SelectedIndex==0?"Major":"Minor",ExportStems=exportMode.SelectedIndex!=1,ExportMixDown=exportMode.SelectedIndex!=0,Channels=channels.SelectedIndex+1,Aspiration=aspiration.SelectedIndex==0?"noAspiration":"asFiles",BitDepth=(int)bits.SelectedItem,SampleRate=(int)rate.SelectedItem,BypassGainPan=bypassGain.Checked,BypassEffects=bypassEffects.Checked}};}
+    }
+    public void SetSingerMarker(string marker){singer.Tag=null;try{if(marker.TrimStart().StartsWith("{")){var db=new JavaScriptSerializer().Deserialize<System.Collections.Generic.Dictionary<string,object>>(marker);singer.Text=(string)db["name"];singer.Tag=marker;QueueSave();return;}}catch{}singer.Text=marker;}
+    string SingerValue(){var marker=singer.Tag as string;if(marker!=null){var db=new JavaScriptSerializer().Deserialize<System.Collections.Generic.Dictionary<string,object>>(marker);if((string)db["name"]==singer.Text.Trim())return marker;}return singer.Text;}
+    public AppPreferences CapturePreferences(){return new AppPreferences{Singer=SingerValue(),Lyric=lyric.Text,Bpm=(double)bpm.Value,Numerator=(int)num.Value,Denominator=(int)den.SelectedItem,FollowInput=followInput.Checked,ManualOutput=followInput.Checked?"":output.Text,Options=new ProjectOptions{AlignNotes=align.Checked,GridDivision=(int)grid.SelectedItem,ScaleEnabled=scaleEnabled.Checked,ScaleRoot=(string)scaleRoot.SelectedItem,ScaleType=scaleType.SelectedIndex==0?"Major":"Minor",ExportStems=exportMode.SelectedIndex!=1,ExportMixDown=exportMode.SelectedIndex!=0,Channels=channels.SelectedIndex+1,Aspiration=aspiration.SelectedIndex==0?"noAspiration":"asFiles",BitDepth=(int)bits.SelectedItem,SampleRate=(int)rate.SelectedItem,BypassGainPan=bypassGain.Checked,BypassEffects=bypassEffects.Checked}};}
     void SavePreferences(){if(!persist)return;try{CapturePreferences().Save(settingsPath);}catch(Exception ex){status.Text="设置未保存："+ex.Message;}}
     void RegisterChanges(Control p){foreach(Control c in p.Controls){var text=c as TextBox;if(text!=null)text.TextChanged+=(s,e)=>QueueSave();var number=c as NumericUpDown;if(number!=null)number.ValueChanged+=(s,e)=>QueueSave();var combo=c as ComboBox;if(combo!=null)combo.SelectedIndexChanged+=(s,e)=>QueueSave();var check=c as CheckBox;if(check!=null)check.CheckedChanged+=(s,e)=>QueueSave();RegisterChanges(c);}}
     void QueueSave(){if(persist&&!IsDisposed){saveTimer.Stop();saveTimer.Start();}}
