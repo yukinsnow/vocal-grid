@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Text;
 using System.Linq;
@@ -61,17 +61,23 @@ public class MidiToVocal {
         foreach(var n in lane)notes.Add(D("uuid",Guid.NewGuid().ToString("N").Substring(0,16),"musicalType","singing","onset",n.Start,"duration",n.End-n.Start,"pitch",n.Pitch,"detune",0,"lyrics",string.IsNullOrWhiteSpace(n.Lyric)?fallback:n.Lyric,"phonemes","","accent","","attributes",D("evenSyllableDuration",true,"muted",false,"languageOverride","mandarin","phonesetOverride","xsampa")));
         var result=D("name",name,"dispColor","ff7db235","dispOrder",i-1,"renderEnabled",options.ExportStems,
             "mixer",D("gainDecibel",0.0,"pan",0.0,"mute",false,"solo",false,"display",true,"fxPresetName","","fxParams",D("room",D("enabled",false),"postRoomEq",D("enabled",false),"compressor",D("enabled",false),"reverb",D("enabled",false))),
-            "mainGroup",D("name",name,"uuid",gid,"parameters",Parameters(),"vocalModes",D(),"pitchControls",new object[0],"notes",notes,"musicalScale",options.ScaleEnabled?D("type",options.ScaleType,"root",options.ScaleRoot):null),
-            "mainRef",D("uuid",Id(),"groupID",gid,"blickAbsoluteBegin",0,"blickAbsoluteEnd",-1,"blickOffset",0,"pitchOffset",0,"mute",false,"isInstrumental",false,"database",D("name",singer,"language","japanese","phoneset","romaji","languageOverride","mandarin","phonesetOverride","xsampa","backendType",generation2?"SVR3":"SVR2AI","version",generation2?"201":(singer=="Mai"?"104":"100")),"dictionary","","voice",D("vocalModeInherited",true,"vocalModePreset","","vocalModeParams",D()),"voicePresetName",""),"groups",new object[0]);
+            "mainGroup",D("name",name,"uuid",gid,"parameters",Parameters(),"vocalModes",D(),"pitchControls",new object[0],"notes",notes,"musicalScale",options.ScaleEnabled?D("type",options.ScaleType=="Minor"?"NaturalMinor":options.ScaleType,"root",options.ScaleRoot):null),
+            "mainRef",D("uuid",Id(),"groupID",gid,"blickAbsoluteBegin",0,"blickAbsoluteEnd",-1,"blickOffset",0,"pitchOffset",0,"mute",false,"isInstrumental",false,"database",SingerDatabase(singer,generation2),"dictionary","","voice",D("vocalModeInherited",true,"vocalModePreset","","vocalModeParams",D()),"voicePresetName",""),"groups",new object[0]);
         if(!options.ScaleEnabled)((System.Collections.Generic.Dictionary<string,object>)result["mainGroup"]).Remove("musicalScale");return result;
     }
     public static string ConvertFile(string input,double bpm,int numerator,int denominator,string destination,string fallback,bool skipDrums,string singer="Mai",bool generation2=false,ProjectOptions options=null){
+        return ConvertFiles(new[]{input},bpm,numerator,denominator,destination,fallback,skipDrums,singer,generation2,options);
+    }
+    public static string ConvertFiles(string[] inputs,double bpm,int numerator,int denominator,string destination,string fallback,bool skipDrums,string singer="Mai",bool generation2=false,ProjectOptions options=null){
+        if(inputs==null||inputs.Length==0)throw new Exception("请至少导入一个 MIDI。");
         if(options==null)options=new ProjectOptions();options.Validate();
         if(singer!=null&&singer.Contains("|")){ParseSinger(singer,out singer,out generation2);}
         if(double.IsNaN(bpm)||double.IsInfinity(bpm)||bpm<5||bpm>999)throw new Exception("BPM 范围为 5–999。");
         if(numerator<1||numerator>64||!new[]{1,2,4,8,16,32,64}.Contains(denominator))throw new Exception("拍号无效。");
         if(string.IsNullOrWhiteSpace(singer))throw new Exception("请输入歌姬代号，例如 Mai。");singer=singer.Trim();
-        var midi=Parse(input,skipDrums);var tracks=new List<object>();int source=0,total=0,split=0;
+        var tracks=new List<object>();int source=0,total=0,split=0;var warnings=new List<string>();
+        foreach(string input in inputs.Distinct(StringComparer.OrdinalIgnoreCase)){
+        var midi=Parse(input,skipDrums);warnings.AddRange(midi.Warnings);
         foreach(var raw in midi.Tracks){if(raw.Count==0)continue;source++;
             foreach(var channel in raw.GroupBy(n=>n.Channel).OrderBy(g=>g.Key)){
                 var lanes=new List<List<Note>>();
@@ -82,13 +88,36 @@ public class MidiToVocal {
                 split+=Math.Max(0,lanes.Count-1);foreach(var lane in lanes)tracks.Add(MakeTrack(lane,tracks.Count+1,fallback,singer,generation2,options));
             }
         }
+        }
         if(tracks.Count==0)throw new Exception("MIDI 中没有可转换的音符。");
         var project=D("version",196,"uuid",Id(),"time",D("meter",new[]{D("index",0,"numerator",numerator,"denominator",denominator)},"tempo",new[]{D("position",0,"bpm",bpm)},"startTimeSeconds",0.0),"library",new object[0],"tracks",tracks,
             "renderConfig",D("destination",Path.GetDirectoryName(Path.GetFullPath(destination)),"filename","vocal","numChannels",options.Channels,"aspirationFormat",options.Aspiration,"bitDepth",options.BitDepth,"sampleRate",options.SampleRate,"exportMixDown",options.ExportMixDown,"exportPitch",false,"bypassPan",options.BypassGainPan,"bypassGain",options.BypassGainPan,"bypassEffects",options.BypassEffects),"projectMixer",D("linkRoomSettings",true));
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(destination)));
         string temp=destination+".tmp";File.WriteAllText(temp,json.Serialize(project),new UTF8Encoding(false));
         if(File.Exists(destination)){string backup=destination+"."+DateTime.Now.ToString("yyyyMMdd-HHmmss-fff")+".bak";File.Replace(temp,destination,backup);}else File.Move(temp,destination);
-        return string.Format("完成：{0} 个 MIDI 音符轨 → {1} 个声部轨，共 {2} 个音符。\r\n复音新增声部：{3}。\r\n{4}\r\n保存：{5}",source,tracks.Count,total,split,string.Join("\r\n",midi.Warnings.Distinct()),destination);
+        return string.Format("完成：{0} 个 MIDI 音符轨 → {1} 个声部轨，共 {2} 个音符。\r\n复音新增声部：{3}。\r\n{4}\r\n保存：{5}",source,tracks.Count,total,split,string.Join("\r\n",warnings.Distinct()),destination);
+    }
+    public static Dictionary<string,object> SingerDatabase(string value,bool generation2=false){
+        value=(value??"").Trim();
+        if(value.StartsWith("{")){
+            var db=json.Deserialize<Dictionary<string,object>>(value);
+            if(db==null||!db.ContainsKey("name")||string.IsNullOrWhiteSpace(Convert.ToString(db["name"])))throw new Exception("声库 JSON 必须包含 name。");
+            db["languageOverride"]="mandarin";db["phonesetOverride"]="xsampa";return db;
+        }
+        string name;bool gen;ParseSinger(value,out name,out gen);generation2=generation2||gen;
+        if(generation2&&name=="Mai")name="Mai 2";
+        bool chinese=name.StartsWith("MEDIUM5",StringComparison.Ordinal);
+        var result=D("name",name,"language",chinese?"mandarin":"japanese","phoneset",chinese?"xsampa":"romaji","languageOverride","mandarin","phonesetOverride","xsampa","backendType",generation2?"SVR3":"SVR2AI");
+        if(name=="Mai")result["version"]="104";
+        return result;
+    }
+    public static string ReadSingerFromProject(string path){
+        var project=json.Deserialize<Dictionary<string,object>>(File.ReadAllText(path).TrimEnd('\0'));
+        foreach(var item in (System.Collections.IEnumerable)project["tracks"]){
+            var track=(Dictionary<string,object>)item;var reference=(Dictionary<string,object>)track["mainRef"];var db=(Dictionary<string,object>)reference["database"];
+            if(db.ContainsKey("name")&&!string.IsNullOrWhiteSpace(Convert.ToString(db["name"])))return json.Serialize(db);
+        }
+        throw new Exception("该工程没有已设置的声库。");
     }
     public static void ParseSinger(string value,out string name,out bool generation2){
         var parts=(value??"").Split('|');
@@ -96,6 +125,7 @@ public class MidiToVocal {
         name=parts[0].Trim();generation2=false;
         if(parts.Length==2){var gen=parts[1].Trim();if(gen!="1"&&gen!="2")throw new Exception("歌姬代际只允许 1 或 2，例如 Mai | 1。");generation2=gen=="2";}
         if(name.Equals("mai",StringComparison.OrdinalIgnoreCase))name="Mai";
+        if(parts.Length==1)generation2=name.EndsWith(" 2",StringComparison.Ordinal);
     }    [STAThread] public static int Main(string[] args){
         if(args.Length>0&&args[0]=="--convert"){
             try{string[] meter=args[3].Split('/');string result=ConvertFile(args[1],double.Parse(args[2],CultureInfo.InvariantCulture),int.Parse(meter[0]),int.Parse(meter[1]),args[4],"啦",false,args.Length>5?args[5]:"Mai",args.Length>6&&args[6]=="2");File.WriteAllText(args[4]+".log.txt",result,Encoding.UTF8);return 0;}catch(Exception ex){File.WriteAllText(args.Length>4?args[4]+".error.txt":"conversion.error.txt",ex.ToString());return 1;}

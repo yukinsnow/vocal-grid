@@ -30,7 +30,7 @@ public class ProjectOptions {
 }
 
 public class AppPreferences {
-    public string Singer = "Mai | 1";
+    public string Singer = "Mai";
     public string Lyric = "啦";
     public double Bpm = 120;
     public int Numerator = 4;
