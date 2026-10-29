@@ -68,6 +68,25 @@ final class ConverterTests: XCTestCase {
         XCTAssertThrowsError(try Converter.convert(input: source, output: output, options: ConversionOptions()))
         XCTAssertFalse(FileManager.default.fileExists(atPath: output.path))
     }
+    func testMergeDifferentPPQAndRawSinger() throws {
+        let root = try workspace(), a = root.appendingPathComponent("a.mid"), b = root.appendingPathComponent("b.mid"), output = root.appendingPathComponent("merged.svp")
+        try midi([[1,144,60,100,1,128,60,0,0,255,47,0]], ppq: 100, format: 0).write(to: a)
+        try midi([[2,144,64,100,2,128,64,0,0,255,47,0]], ppq: 200, format: 0).write(to: b)
+        var options = ConversionOptions(); options.alignNotes = false; options.scaleType = "Minor"
+        options.singer = "{\"name\":\"Example 2\",\"backendType\":\"custom-engine\",\"version\":\"209\"}"
+        let report = try Converter.convert(inputs: [a,b], output: output, options: options)
+        XCTAssertEqual(report.sourceTracks, 2); XCTAssertEqual(report.outputTracks, 2); XCTAssertEqual(report.notes, 2)
+        let project = try load(output), tracks = try XCTUnwrap(project["tracks"] as? [[String: Any]])
+        for (index, track) in tracks.enumerated() {
+            XCTAssertEqual(track["name"] as? String, "Melody\(index + 1)")
+            let group = try XCTUnwrap(track["mainGroup"] as? [String: Any]), note = try XCTUnwrap((group["notes"] as? [[String: Any]])?.first)
+            XCTAssertEqual((note["onset"] as? NSNumber)?.int64Value, 7_056_000)
+            XCTAssertEqual((group["musicalScale"] as? [String: String])?["type"], "NaturalMinor")
+            let ref = try XCTUnwrap(track["mainRef"] as? [String: Any]), db = try XCTUnwrap(ref["database"] as? [String: Any])
+            XCTAssertEqual(db["backendType"] as? String, "custom-engine"); XCTAssertEqual(db["version"] as? String, "209")
+        }
+        XCTAssertTrue(try Converter.readSinger(from: output).contains("209"))
+    }
     func testConfigurableGridScaleExportAndPreferences() throws {
         let root = try workspace(), source = root.appendingPathComponent("exact.mid"), output = root.appendingPathComponent("vocal.svp")
         try midi([[1,144,60,100,1,128,60,0,0,255,47,0]], ppq: 100, format: 0).write(to: source)
@@ -83,7 +102,7 @@ final class ConverterTests: XCTestCase {
             let project = try load(output), track = try XCTUnwrap((project["tracks"] as? [[String: Any]])?.first)
             XCTAssertEqual(track["renderEnabled"] as? Bool, false)
             let group = try XCTUnwrap(track["mainGroup"] as? [String: Any]), scale = try XCTUnwrap(group["musicalScale"] as? [String: String])
-            XCTAssertEqual(scale["root"], "D"); XCTAssertEqual(scale["type"], "Minor")
+            XCTAssertEqual(scale["root"], "D"); XCTAssertEqual(scale["type"], "NaturalMinor")
             let note = try XCTUnwrap((group["notes"] as? [[String: Any]])?.first), step = Int64(705_600_000 / (division / 4))
             XCTAssertEqual((note["duration"] as? NSNumber)?.int64Value, step)
             let render = try XCTUnwrap(project["renderConfig"] as? [String: Any])
@@ -103,3 +122,4 @@ final class ConverterTests: XCTestCase {
         XCTAssertThrowsError(try Converter.parseSinger("Mai | 3"))
     }
 }
+
