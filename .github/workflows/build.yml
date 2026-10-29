@@ -33,7 +33,7 @@ jobs:
         run: bash macos/build-macos.sh --universal
       - name: Check both architectures and package app
         run: |
-          lipo -verify_arch arm64 x86_64 'macos/dist/Vocal Grid.app/Contents/MacOS/VocalGrid'
+          lipo 'macos/dist/Vocal Grid.app/Contents/MacOS/VocalGrid' -verify_arch arm64 x86_64
           ditto -c -k --sequesterRsrc --keepParent 'macos/dist/Vocal Grid.app' 'VocalGrid-macOS-universal.zip'
           shasum -a 256 VocalGrid-macOS-universal.zip > VocalGrid-macOS-universal.zip.sha256
       - uses: actions/upload-artifact@v6
