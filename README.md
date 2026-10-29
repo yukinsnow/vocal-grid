@@ -23,7 +23,7 @@ No Electron, web runtime, third-party MIDI parser, voice database, or singing sy
 - Optional project scale metadata: C major by default, any chromatic root with major/minor, or disable it. This does not transpose or force notes into the scale.
 - Remember rhythm, singer, grid, scale and export choices locally between launches.
 - Set Mandarin Chinese on all notes. Preserve MIDI lyric events when available; otherwise use the editable default lyric `啦`.
-- Drag and drop MIDI files or folders. When several MIDI files are found, select one from a list. Folder discovery is nonrecursive.
+- Select or drop multiple MIDI files or folders and merge them into one SVP. Folder discovery is nonrecursive.
 - Drag a folder onto the output section to choose where to save `vocal.svp`.
 - Back up an existing project before writing its replacement. Original MIDI files are never modified.
 
@@ -123,3 +123,4 @@ This tool is an independent utility and is not affiliated with Dreamtonics. No p
 - Natural minor now serializes as `NaturalMinor`, verified against an SV2-saved project, instead of the unrecognized `Minor` value.
 - Quantization changes note onset/duration. The grid shown in SV2's toolbar is an editor preference stored locally by SV2, not an SVP project field. This app does not modify SV2's global preferences.
 - The original SVP distributed by [shibobiiiiiii](https://www.bilibili.com/video/BV13L4y1g7s2/) confirms first-generation Stardust Infinity AI as `MEDIUM5·Stardust`, native language `mandarin`, backend `SVR2AI`. This is not evidence of the second-generation identifier; use Read from SVP for that version. Third-party score data is not bundled.
+
