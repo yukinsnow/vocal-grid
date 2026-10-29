@@ -30,6 +30,17 @@ final class ConverterModel: ObservableObject {
     @Published var folder = FileManager.default.homeDirectoryForCurrentUser { didSet { save() } }
     @Published var options = ConversionOptions() { didSet { save() } }
     @Published var singer = "Mai" { didSet { save() } }
+    private var voiceDatabase: String?
+    private var singerValue: String {
+        if let marker = voiceDatabase, let data = marker.data(using: .utf8), let db = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any], db["name"] as? String == singer.trimmingCharacters(in: .whitespacesAndNewlines) { return marker }
+        return singer
+    }
+    private func setSingerMarker(_ marker: String) {
+        if let data = marker.data(using: .utf8), let db = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any], let name = db["name"] as? String {
+            singer = name; voiceDatabase = marker
+        } else { singer = marker; voiceDatabase = nil }
+        save()
+    }
     @Published var followInput = true { didSet { if followInput, let input = input { folder = input.deletingLastPathComponent() }; save() } }
     @Published var busy = false
     @Published var status = "就绪 · 设置自动保存在本机"
@@ -45,7 +56,7 @@ final class ConverterModel: ObservableObject {
         if let data = defaults.data(forKey: "VocalGrid.preferences.v1") {
             do {
                 let saved = try JSONDecoder().decode(Saved.self, from: data)
-                options = saved.options; singer = saved.singer == "Mai | 1" ? "Mai" : saved.singer; followInput = saved.followInput
+                options = saved.options; setSingerMarker(saved.singer == "Mai | 1" ? "Mai" : saved.singer); followInput = saved.followInput
                 if !followInput, let path = saved.manualFolder { folder = URL(fileURLWithPath: path, isDirectory: true) }
             } catch { status = "本机设置无法读取，已恢复默认值。" }
         }
@@ -54,7 +65,7 @@ final class ConverterModel: ObservableObject {
     }
     func save() {
         guard ready else { return }
-        let saved = Saved(options: options, singer: singer, followInput: followInput, manualFolder: followInput ? nil : folder.path)
+        let saved = Saved(options: options, singer: singerValue, followInput: followInput, manualFolder: followInput ? nil : folder.path)
         if let data = try? JSONEncoder().encode(saved) { defaults.set(data, forKey: "VocalGrid.preferences.v1") }
     }
     func alert(_ text: String) { message = text; showMessage = true }
@@ -68,7 +79,7 @@ final class ConverterModel: ObservableObject {
     func readVoice() {
         let panel = NSOpenPanel(); panel.allowedContentTypes = [UTType(filenameExtension: "svp") ?? .data]
         if panel.runModal() == .OK, let url = panel.url {
-            do { singer = try Converter.readSinger(from: url) } catch { alert(error.localizedDescription) }
+            do { setSingerMarker(try Converter.readSinger(from: url)) } catch { alert(error.localizedDescription) }
         }
     }
     func chooseFolder() {
@@ -121,7 +132,7 @@ final class ConverterModel: ObservableObject {
         guard !inputs.isEmpty else { alert("请先选择或拖入 MIDI 文件。"); return }
         let sources = inputs
         var snapshot = options
-        snapshot.singer = singer; snapshot.skipDrums = false
+        snapshot.singer = singerValue; snapshot.skipDrums = false
         let output = folder.appendingPathComponent("vocal.svp")
         save()
         busy = true; status = "正在量化音符、整理声部…"
@@ -149,7 +160,7 @@ struct ContentView: View {
             HStack {
                 Image(nsImage: NSApplication.shared.applicationIconImage).resizable().frame(width: 36, height: 36)
                 Text("Vocal Grid").font(.system(size: 23, weight: .bold, design: .rounded))
-                Spacer(); Text("多 MIDI → 一个 SVP · 本机记忆").foregroundStyle(.secondary)
+                Spacer(); Text("多 MIDI → SVP").lineLimit(1).fixedSize().foregroundStyle(.secondary)
             }
             card {
                 HStack { Text("导入 MIDI").bold(); Text("多选或拖入文件 / 文件夹，同起点合并").font(.caption).foregroundStyle(.secondary); Spacer() }
@@ -167,16 +178,15 @@ struct ContentView: View {
                         field("拍号") { HStack(spacing: 3) { TextField("4", value: $model.options.numerator, format: .number); Text("/"); Picker("分母", selection: $model.options.denominator) { ForEach([1,2,4,8,16,32,64], id: \.self) { Text("\($0)").tag($0) } }.labelsHidden() } }.frame(width: 150)
                         field("歌词") { TextField("啦", text: $model.options.lyric) }
                     }
-                    field("声库标记 database.name / 完整 database JSON") {
+                    field("声库名称（默认 Mai 一代）") {
                         HStack { TextField("Mai", text: $model.singer); Button("从 SVP 读取", action: model.readVoice) }
                     }
-                    Text("Mai / Mai 2；星尘一代：MEDIUM5·Stardust").font(.caption2).foregroundStyle(.secondary)
                     HStack { Toggle("量化音符", isOn: $model.options.alignNotes); Spacer(); Picker("1/", selection: $model.options.gridDivision) { ForEach([4,8,16,32,64], id: \.self) { Text("\($0)").tag($0) } }.frame(width: 110).disabled(!model.options.alignNotes) }
                     Text("SV2 工具栏网格由 SV2 本机偏好控制").font(.caption2).foregroundStyle(.secondary)
                     HStack {
                         Toggle("调式音阶", isOn: $model.options.scaleEnabled)
                         Picker("主音", selection: $model.options.scaleRoot) { ForEach(["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"], id: \.self) { Text($0).tag($0) } }.labelsHidden().frame(width: 70).disabled(!model.options.scaleEnabled)
-                        Picker("调式", selection: $model.options.scaleType) { Text("大调").tag("Major"); Text("自然小调").tag("Minor") }.labelsHidden().disabled(!model.options.scaleEnabled)
+                        Picker("调式", selection: $model.options.scaleType) { Text("自然大调").tag("Major"); Text("自然小调").tag("Minor") }.labelsHidden().disabled(!model.options.scaleEnabled)
                     }
                 }.frame(width: 400)
                 card {
