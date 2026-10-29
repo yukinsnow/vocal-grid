@@ -31,6 +31,13 @@ class UiSmoke {
   for(int i=0;i<mergedTracks.Length;i++)Check((string)mergedTracks[i]["name"]=="Melody"+(i+1),"Merged numbering");
   var imported=(Dictionary<string,object>)mergedTracks[0]["mainRef"];var importedDb=(Dictionary<string,object>)imported["database"];Check((string)importedDb["backendType"]=="custom-engine"&&(string)importedDb["version"]=="209","Raw database modified");
   Check(MidiToVocal.ReadSingerFromProject(merged).Contains("209"),"Read voice from SVP");
+  using(var voiceUi=new ConverterWindow(settings,false)){
+   voiceUi.SetSingerMarker(raw);Check(Field<TextBox>(voiceUi,"singer").Text=="Example 2","Voice UI must show only name");
+   Check(voiceUi.CapturePreferences().Singer.Contains("209"),"Imported version lost");
+   voiceUi.CapturePreferences().Save(settings);
+   Field<TextBox>(voiceUi,"singer").Text="Mai";Check(voiceUi.CapturePreferences().Singer=="Mai","Manual edit must replace imported metadata");
+  }
+  using(var restoredVoice=new ConverterWindow(settings,false)){Check(Field<TextBox>(restoredVoice,"singer").Text=="Example 2"&&restoredVoice.CapturePreferences().Singer.Contains("209"),"Imported voice restore");}
   var lastGroup=(Dictionary<string,object>)mergedTracks.Last()["mainGroup"];var lastNote=((IEnumerable)lastGroup["notes"]).Cast<Dictionary<string,object>>().First();Check(System.Convert.ToInt64(lastNote["onset"])==7056000,"Per-file PPQ normalization");
   using(var compact=new ConverterWindow(settings,false)){compact.Show();Application.DoEvents();Check(!Field<Panel>(compact,"content").AutoScroll,"Scrolling layout retained");Check(compact.Height<=Screen.FromControl(compact).WorkingArea.Height,"Window outside work area");compact.Close();}
   Console.WriteLine("PASS: controls, persistence, five quantization grids, NaturalMinor, direct/raw singer markers, multi-MIDI merge with mixed PPQ, compact screen fit.");
