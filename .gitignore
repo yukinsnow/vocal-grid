@@ -12,3 +12,4 @@ dist/
 *.log.txt
 tests/windows/*.mid
 tests/windows/single/
+tests/windows/prefs-*.json*

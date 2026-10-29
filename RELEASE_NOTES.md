@@ -1,9 +1,13 @@
 ## 简体中文
 
-Vocal Grid 首个版本：轻量原生 MIDI → Synthesizer V Studio 2 工程转换工具。
+Vocal Grid 首个完整版本：轻量原生 MIDI → Synthesizer V Studio 2 工程转换工具。
 
 - Windows 原生 WinForms 界面；macOS 原生 SwiftUI 界面，支持 Apple Silicon 与 Intel。
-- 支持文件/目录拖放，输入 BPM 和拍号，音符对齐 32 分音符网格。
+- 独立量化开关，4/8/16/32/64 网格，默认 32；可选工程调式音阶，默认 C 大调。
+- MIDI 输入目录作为默认输出目录，转换及导出参数自动保存在本机。
+- Windows 移除旧自绘菜单，歌姬改用纯文本输入：`Mai | 1`、`Mai 2 | 2`。
+- 导出内容、声道、气声、位深、采样率及两个旁通开关均可配置。移除跳过打击乐选项，保留所有通道。
+- 应用标注 GitHub @Yukinsnow。
 - 默认 Mai 一代，可手动填写其他歌姬代号；全部音符设置为汉语普通话。
 - 输出 `vocal.svp`，轨道依次命名为 Melody1、Melody2……，复音自动拆分声部。
 - 仅分轨，开启“旁通增益和声像”“旁通效果”，立体声、气声输出无、24 位、48000 Hz。
@@ -22,7 +26,11 @@ Vocal Grid 首个版本：轻量原生 MIDI → Synthesizer V Studio 2 工程转
 The first release of Vocal Grid, a lightweight native MIDI-to-Synthesizer V Studio 2 project converter.
 
 - Native WinForms UI on Windows and SwiftUI UI on macOS, with Apple Silicon and Intel support.
-- Drag and drop MIDI files or folders, set BPM and meter, and quantize notes to a 1/32-note grid.
+- Optional quantization with 1/4, 1/8, 1/16, 1/32, or 1/64 grids; optional C-major-by-default project scale metadata.
+- Output follows the MIDI input folder by default; conversion and export preferences persist locally.
+- Windows custom popup menus removed; typed singer/generation syntax such as `Mai | 1` or `Mai 2 | 2`.
+- Configurable stems/mixdown, channels, aspiration output, bit depth, sample rate and bypass switches. All MIDI channels are preserved.
+- GitHub @Yukinsnow attribution in the app.
 - First-generation Mai by default, with manually entered singer database names; Mandarin on all notes.
 - Generate `vocal.svp` with numbered Melody tracks and automatic polyphonic voice splitting.
 - Stems only, bypass gain/pan and effects, stereo, aspiration output None, 24-bit / 48 kHz.
