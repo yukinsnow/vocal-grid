@@ -65,7 +65,7 @@ jobs:
           $smokeOutput=Join-Path $PWD 'dist\windows\UiSmoke.exe'
           $appAssembly=Join-Path $PWD 'dist\windows\MidiToVocal.exe'
           $smokeSource=Join-Path $PWD 'tests\windows\UiSmoke.cs'
-          & $compiler /nologo ("/out:"+$smokeOutput) ("/reference:"+$appAssembly) /reference:System.Windows.Forms.dll $smokeSource
+          & $compiler /nologo ("/out:"+$smokeOutput) ("/reference:"+$appAssembly) /reference:System.Windows.Forms.dll /reference:System.Web.Extensions.dll $smokeSource
           if($LASTEXITCODE -ne 0){throw 'Smoke check build failed'}
           & ./dist/windows/UiSmoke.exe tests/windows
           if($LASTEXITCODE -ne 0){throw 'Smoke check failed'}
