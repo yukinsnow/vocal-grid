@@ -1,0 +1,14 @@
+.DS_Store
+Thumbs.db
+.build/
+.swiftpm/
+dist/
+*.exe
+*.pdb
+*.svp
+*.svp.*
+*.bak
+*.error.txt
+*.log.txt
+tests/windows/*.mid
+tests/windows/single/
