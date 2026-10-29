@@ -2,6 +2,12 @@ name: Build native apps
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Optional private release tag, e.g. v1.0.0; leave blank for artifacts only'
+        required: false
+        default: ''
+        type: string
   push:
     branches: [main]
     paths:
@@ -69,3 +75,44 @@ jobs:
           path: dist/windows/MidiToVocal.exe
           if-no-files-found: error
           retention-days: 14
+  release:
+    name: Publish private release
+    if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
+    needs: [macos, windows]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v6
+        with:
+          name: VocalGrid-macOS-universal
+          path: release
+      - uses: actions/download-artifact@v6
+        with:
+          name: VocalGrid-Windows
+          path: release
+      - name: Create private release with tested binaries
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Use a tag such as v1.0.0'; exit 1; }
+          [[ "$(gh api "repos/$GH_REPO" --jq .private)" == true ]] || { echo 'Refusing to publish: repository must remain private'; exit 1; }
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo 'Release already exists; refusing to replace it.'
+            exit 1
+          fi
+          cd release
+          mv MidiToVocal.exe VocalGrid-Windows.exe
+          sha256sum VocalGrid-Windows.exe VocalGrid-macOS-universal.zip > SHA256SUMS.txt
+          gh release create "$RELEASE_TAG" \
+            --target "$GITHUB_SHA" \
+            --title "Vocal Grid $RELEASE_TAG" \
+            --notes-file ../RELEASE_NOTES.md \
+            --latest \
+            VocalGrid-Windows.exe VocalGrid-macOS-universal.zip SHA256SUMS.txt
