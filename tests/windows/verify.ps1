@@ -32,7 +32,7 @@ Assert ((Get-ChildItem "$out.*.bak").Count -ge 1) 'Backup failed'
 # Format 0, UTF-8 lyric, running status, zero-velocity note off, very short note, drums.
 $m=WriteMidi 'running.mid' @(,@(0,255,5,3,229,149,166,1,144,60,100,1,60,0,0,153,35,100,120,35,0,0,255,47,0)) 100 0
 $j=ConvertMidi $m (Join-Path $PSScriptRoot 'running.svp')
-Assert ($j.tracks.Count -eq 1) 'Drum exclusion failed'
+Assert ($j.tracks.Count -eq 2) 'Drum preservation failed'
 Assert ($j.tracks[0].mainGroup.notes[0].duration -eq 88200000) 'Short-note protection failed'
 # Same-tick MIDI lyric.
 $m=WriteMidi 'lyrics.mid' @(,@(0,255,5,3,229,149,166,0,144,60,100,120,128,60,0,0,255,47,0)) 480 0
