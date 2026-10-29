@@ -109,11 +109,12 @@ jobs:
           fi
           cd release
           mv MidiToVocal.exe VocalGrid-Windows.exe
-          sha256sum VocalGrid-Windows.exe VocalGrid-macOS-universal.zip > SHA256SUMS.txt
+          zip -j VocalGrid-Windows.zip VocalGrid-Windows.exe
+          sha256sum VocalGrid-Windows.zip VocalGrid-macOS-universal.zip > SHA256SUMS.txt
           gh release create "$RELEASE_TAG" \
             --target "$GITHUB_SHA" \
             --title "Vocal Grid $RELEASE_TAG" \
             --notes-file ../RELEASE_NOTES.md \
             --latest \
-            VocalGrid-Windows.exe VocalGrid-macOS-universal.zip SHA256SUMS.txt
+            VocalGrid-Windows.zip VocalGrid-macOS-universal.zip SHA256SUMS.txt
 
