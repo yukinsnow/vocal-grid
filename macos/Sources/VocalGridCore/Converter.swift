@@ -168,7 +168,7 @@ public enum Converter {
         let parts = value.components(separatedBy: "|").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
         guard parts.count <= 2, !parts[0].isEmpty else { throw ConversionError.invalid("歌姬格式：Mai | 1；二代格式：工程内声库名 | 2。") }
         if parts.count == 2 && !["1", "2"].contains(parts[1]) { throw ConversionError.invalid("歌姬代际只允许 1 或 2。") }
-        return (parts[0].lowercased() == "mai" ? "Mai" : parts[0], parts.count == 2 && parts[1] == "2")
+        return (parts[0].lowercased() == "mai" ? "Mai" : parts[0], (parts.count == 2 && parts[1] == "2") || (parts.count == 1 && parts[0].hasSuffix(" 2")))
     }
     private static func track(_ notes: [Note], number: Int, options: ConversionOptions) -> [String: Any] {
         let group = uuid(), name = "Melody\(number)"
@@ -186,21 +186,45 @@ public enum Converter {
         var result: [String: Any] = ["name": name, "dispColor": "ff7db235", "dispOrder": number - 1, "renderEnabled": options.exportStems,
                 "mixer": ["gainDecibel": 0.0, "pan": 0.0, "mute": false, "solo": false, "display": true, "fxPresetName": "",
                           "fxParams": ["room": ["enabled": false], "postRoomEq": ["enabled": false], "compressor": ["enabled": false], "reverb": ["enabled": false]]],
-                "mainGroup": ["name": name, "uuid": group, "parameters": parameters, "vocalModes": [:], "pitchControls": [], "notes": converted, "musicalScale": ["type": options.scaleType, "root": options.scaleRoot]],
+                "mainGroup": ["name": name, "uuid": group, "parameters": parameters, "vocalModes": [:], "pitchControls": [], "notes": converted, "musicalScale": ["type": options.scaleType == "Minor" ? "NaturalMinor" : options.scaleType, "root": options.scaleRoot]],
                 "mainRef": ["uuid": uuid(), "groupID": group, "blickAbsoluteBegin": 0, "blickAbsoluteEnd": -1,
                             "blickOffset": 0, "pitchOffset": 0, "mute": false, "isInstrumental": false,
-                            "database": ["name": options.singer, "language": "japanese", "phoneset": "romaji", "languageOverride": "mandarin", "phonesetOverride": "xsampa",
-                                         "backendType": options.generation2 ? "SVR3" : "SVR2AI", "version": options.generation2 ? "201" : (options.singer == "Mai" ? "104" : "100")],
+                            "database": singerDatabase(options),
                             "dictionary": "", "voice": ["vocalModeInherited": true, "vocalModePreset": "", "vocalModeParams": [:]], "voicePresetName": ""],
                 "groups": []]
         if !options.scaleEnabled, var group = result["mainGroup"] as? [String: Any] { group.removeValue(forKey: "musicalScale"); result["mainGroup"] = group }
         return result
     }
+    private static func singerDatabase(_ options: ConversionOptions) -> [String: Any] {
+        if options.singer.hasPrefix("{"), let data = options.singer.data(using: .utf8), var db = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] {
+            db["languageOverride"] = "mandarin"; db["phonesetOverride"] = "xsampa"; return db
+        }
+        let name = options.generation2 && options.singer == "Mai" ? "Mai 2" : options.singer
+        let chinese = name.hasPrefix("MEDIUM5")
+        var db: [String: Any] = ["name": name, "language": chinese ? "mandarin" : "japanese", "phoneset": chinese ? "xsampa" : "romaji", "languageOverride": "mandarin", "phonesetOverride": "xsampa", "backendType": options.generation2 ? "SVR3" : "SVR2AI"]
+        if name == "Mai" { db["version"] = "104" }
+        return db
+    }
+    public static func readSinger(from url: URL) throws -> String {
+        let data = try Data(contentsOf: url).filter { $0 != 0 }
+        guard let project = try JSONSerialization.jsonObject(with: Data(data)) as? [String: Any], let tracks = project["tracks"] as? [[String: Any]] else { throw ConversionError.invalid("无效 SVP。") }
+        for track in tracks {
+            if let reference = track["mainRef"] as? [String: Any], let db = reference["database"] as? [String: Any], let name = db["name"] as? String, !name.isEmpty {
+                return String(decoding: try JSONSerialization.data(withJSONObject: db, options: [.sortedKeys]), as: UTF8.self)
+            }
+        }
+        throw ConversionError.invalid("该工程没有已设置的声库。")
+    }
     public static func convert(input: URL, output: URL, options original: ConversionOptions) throws -> ConversionReport {
+        try convert(inputs: [input], output: output, options: original)
+    }
+    public static func convert(inputs: [URL], output: URL, options original: ConversionOptions) throws -> ConversionReport {
+        guard !inputs.isEmpty else { throw ConversionError.invalid("请至少导入一个 MIDI。") }
         var options = original
         options.singer = options.singer.trimmingCharacters(in: .whitespacesAndNewlines)
         options.lyric = options.lyric.trimmingCharacters(in: .whitespacesAndNewlines)
-        if options.singer.contains("|") { (options.singer, options.generation2) = try parseSinger(options.singer) }
+        if !options.singer.hasPrefix("{") { (options.singer, options.generation2) = try parseSinger(options.singer) }
+        if options.singer.hasPrefix("{") { guard let data = options.singer.data(using: .utf8), let db = try JSONSerialization.jsonObject(with: data) as? [String: Any], let name = db["name"] as? String, !name.isEmpty else { throw ConversionError.invalid("声库 JSON 必须包含 name。") } }
         guard [4,8,16,32,64].contains(options.gridDivision) else { throw ConversionError.invalid("网格只能为 4、8、16、32 或 64。") }
         guard options.exportStems || options.exportMixDown else { throw ConversionError.invalid("至少启用分轨或混音输出。") }
         guard [1,2].contains(options.channels), [16,24,32].contains(options.bitDepth), [44100,48000,88200,96000].contains(options.sampleRate), ["noAspiration","asFiles"].contains(options.aspiration) else { throw ConversionError.invalid("导出格式无效。") }
@@ -209,8 +233,10 @@ public enum Converter {
         guard (1...64).contains(options.numerator), [1, 2, 4, 8, 16, 32, 64].contains(options.denominator) else { throw ConversionError.invalid("拍号无效。") }
         guard !options.singer.isEmpty else { throw ConversionError.invalid("请输入歌姬代号，例如 Mai。") }
         guard !options.lyric.isEmpty else { throw ConversionError.invalid("请输入默认歌词，例如：啦。") }
-        let (ppq, sources, warnings) = try parse(Data(contentsOf: input), skipDrums: options.skipDrums)
-        var tracks: [[String: Any]] = [], total = 0, sourceCount = 0
+        var tracks: [[String: Any]] = [], total = 0, sourceCount = 0, warnings: [String] = []
+        for input in inputs {
+        let (ppq, sources, fileWarnings) = try parse(Data(contentsOf: input), skipDrums: options.skipDrums)
+        warnings += fileWarnings
         for raw in sources where !raw.isEmpty {
             sourceCount += 1
             let channels = Dictionary(grouping: raw, by: { $0.channel })
@@ -226,6 +252,7 @@ public enum Converter {
                 }
                 for lane in lanes { tracks.append(track(lane, number: tracks.count + 1, options: options)) }
             }
+        }
         }
         guard !tracks.isEmpty else { throw ConversionError.invalid("没有可转换的音符。") }
         let project: [String: Any] = ["version": 196, "uuid": uuid(),
