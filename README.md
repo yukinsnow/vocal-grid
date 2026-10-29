@@ -124,3 +124,8 @@ This tool is an independent utility and is not affiliated with Dreamtonics. No p
 - Quantization changes note onset/duration. The grid shown in SV2's toolbar is an editor preference stored locally by SV2, not an SVP project field. This app does not modify SV2's global preferences.
 - The original SVP distributed by [shibobiiiiiii](https://www.bilibili.com/video/BV13L4y1g7s2/) confirms first-generation Stardust Infinity AI as `MEDIUM5·Stardust`, native language `mandarin`, backend `SVR2AI`. This is not evidence of the second-generation identifier; use Read from SVP for that version. Third-party score data is not bundled.
 
+
+## v1.1.1
+
+The voice input displays only the name after Read from SVP, while preserving imported engine/version metadata internally and across restarts. Manual edits replace it. First-generation Mai remains the default. Windows releases now ship as VocalGrid-Windows.zip; extract and run VocalGrid-Windows.exe. The header is shorter with additional height to prevent clipping, and the Chinese scale labels are Natural Major / Natural Minor.
+

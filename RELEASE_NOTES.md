@@ -1,22 +1,21 @@
 ## 简体中文
 
-Vocal Grid v1.1：修复 SVP 声库与小调设置，并新增多 MIDI 合并。
+Vocal Grid v1.1.1
 
-- 多选、追加或拖入多个 MIDI / 文件夹，同起点合并为一个 vocal.svp；按各自 PPQ 换算，轨道连续编号，默认输出到首个输入目录。
-- 声库输入直接对应 database.name：默认 Mai，二代 Mai 填 Mai 2。支持从已有 SVP 读取完整声库标记或粘贴 database JSON，移除臆测版本号。
-- 根据原始公开工程核实星尘 Infinity 一代名称 MEDIUM5·Stardust；二代标记请从本机已正确设置的 SVP 读取。
-- 自然小调实际写入 NaturalMinor，修复被 SV2 回退为大调的问题。
-- 明确量化音符与 SV2 本机工具栏网格的区别。4/8/16/32/64 量化及关闭量化均有回归测试。
-- 紧凑双栏主界面，所有设置一屏可见，无滚动条；设置继续保存在本机。
+- 缩短并增高顶部“多 MIDI → SVP”标题区域，避免文字被截断。
+- “从 SVP 读取”后仅显示声库 name，内部继续保留完整引擎和版本标记；重启可恢复，手动改名会替换旧标记。
+- 移除声库输入框下方示例说明，默认仍为 Mai 一代。
+- 调式显示名称统一为“自然大调”“自然小调”。
+- Windows Release 改为 VocalGrid-Windows.zip，解压后运行 VocalGrid-Windows.exe。Mac 保持通用版 ZIP，另附 SHA-256 校验文件。
 
-Windows 下载 VocalGrid-Windows.exe；macOS 13+ 下载 VocalGrid-macOS-universal.zip（Apple Silicon + Intel，尚未 Apple 公证）。仓库保持私有。云端构建和自动测试通过后发布；未验证未安装声库的实际音频渲染。
+保留多 MIDI 同起点合并、量化、普通话、全部导出设置及本机记忆。仓库保持私有。Mac 应用尚未 Apple 公证。
 
 ## English
 
-- Merge multiple MIDI files at a common project origin, normalize each file's PPQ, retain separate lanes and number tracks continuously. Output follows the first input folder.
-- Direct database.name input (Mai / Mai 2), complete database JSON input, and Read from SVP for exact engine/version metadata.
-- Correct NaturalMinor serialization; remove speculative voice version numbers.
-- Distinguish note quantization from SV2's locally stored toolbar grid.
-- Compact two-column native UI without scrolling, with persistent local preferences.
+- Prevent header text clipping with a shorter title and more vertical space.
+- Show only the singer name after reading an SVP; retain engine/version metadata internally across restarts. Manual name edits replace the imported marker.
+- Remove the singer example hint; first-generation Mai remains the default.
+- Rename scale labels to Natural Major / Natural Minor in the Chinese UI.
+- Package Windows as VocalGrid-Windows.zip. Extract it and run VocalGrid-Windows.exe. macOS remains a universal ZIP; SHA-256 checksums are attached.
 
-Windows executable and macOS 13+ universal ZIP are attached with SHA-256 checksums. The repository remains private. The Mac app is ad-hoc signed, not Apple notarized. Actual rendering with unavailable voicebanks has not been verified.
+The repository remains private. The Mac app is not Apple notarized.
