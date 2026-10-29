@@ -72,7 +72,7 @@ public enum Converter {
     public static let grid: Int64 = 88_200_000
     private static func uuid() -> String { UUID().uuidString.lowercased() }
     private static func decode(_ data: Data) -> String {
-        let gb = String.Encoding(rawValue: CFStringConvertEncodingToNSStringEncoding(CFStringEncodings.GB_18030_2000.rawValue))
+        let gb = String.Encoding(rawValue: CFStringConvertEncodingToNSStringEncoding(CFStringEncoding(CFStringEncodings.GB_18030_2000.rawValue)))
         return (String(data: data, encoding: .utf8) ?? String(data: data, encoding: gb) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
     }
     private static func parse(_ data: Data, skipDrums: Bool) throws -> (Int, [[Note]], [String]) {
