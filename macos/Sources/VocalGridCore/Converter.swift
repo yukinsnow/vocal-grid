@@ -1,14 +1,27 @@
 import Foundation
 import CoreFoundation
 
-public struct ConversionOptions: Sendable {
+public struct ConversionOptions: Sendable, Codable {
     public var bpm = 120.0
     public var numerator = 4
     public var denominator = 4
     public var singer = "Mai"
     public var generation2 = false
     public var lyric = "啦"
-    public var skipDrums = true
+    public var skipDrums = false
+    public var alignNotes = true
+    public var gridDivision = 32
+    public var scaleEnabled = true
+    public var scaleRoot = "C"
+    public var scaleType = "Major"
+    public var exportStems = true
+    public var exportMixDown = false
+    public var channels = 2
+    public var aspiration = "noAspiration"
+    public var bitDepth = 24
+    public var sampleRate = 48000
+    public var bypassGainPan = true
+    public var bypassEffects = true
     public init() {}
 }
 
@@ -144,8 +157,18 @@ public enum Converter {
         }
         return (ppq, tracks, warnings)
     }
-    private static func snap(_ tick: Int64, ppq: Int) -> Int64 {
-        ((tick * 16 + Int64(ppq)) / (2 * Int64(ppq))) * grid
+        private static func snap(_ tick: Int64, ppq: Int, division: Int) -> Int64 {
+        let steps = Int64(division / 4)
+        return ((tick * steps * 2 + Int64(ppq)) / (2 * Int64(ppq))) * (705_600_000 / steps)
+    }
+    private static func exact(_ tick: Int64, ppq: Int) -> Int64 {
+        Int64((Double(tick) * 705_600_000 / Double(ppq)).rounded(.toNearestOrAwayFromZero))
+    }
+    public static func parseSinger(_ value: String) throws -> (String, Bool) {
+        let parts = value.components(separatedBy: "|").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        guard parts.count <= 2, !parts[0].isEmpty else { throw ConversionError.invalid("歌姬格式：Mai | 1；二代格式：工程内声库名 | 2。") }
+        if parts.count == 2 && !["1", "2"].contains(parts[1]) { throw ConversionError.invalid("歌姬代际只允许 1 或 2。") }
+        return (parts[0].lowercased() == "mai" ? "Mai" : parts[0], parts.count == 2 && parts[1] == "2")
     }
     private static func track(_ notes: [Note], number: Int, options: ConversionOptions) -> [String: Any] {
         let group = uuid(), name = "Melody\(number)"
@@ -160,21 +183,28 @@ public enum Converter {
                     "lyrics": lyric, "phonemes": "", "accent": "",
                     "attributes": ["evenSyllableDuration": true, "muted": false, "languageOverride": "mandarin", "phonesetOverride": "xsampa"]]
         }
-        return ["name": name, "dispColor": "ff7db235", "dispOrder": number - 1, "renderEnabled": true,
+        var result: [String: Any] = ["name": name, "dispColor": "ff7db235", "dispOrder": number - 1, "renderEnabled": options.exportStems,
                 "mixer": ["gainDecibel": 0.0, "pan": 0.0, "mute": false, "solo": false, "display": true, "fxPresetName": "",
                           "fxParams": ["room": ["enabled": false], "postRoomEq": ["enabled": false], "compressor": ["enabled": false], "reverb": ["enabled": false]]],
-                "mainGroup": ["name": name, "uuid": group, "parameters": parameters, "vocalModes": [:], "pitchControls": [], "notes": converted, "musicalScale": ["type": "Major", "root": "C"]],
+                "mainGroup": ["name": name, "uuid": group, "parameters": parameters, "vocalModes": [:], "pitchControls": [], "notes": converted, "musicalScale": ["type": options.scaleType, "root": options.scaleRoot]],
                 "mainRef": ["uuid": uuid(), "groupID": group, "blickAbsoluteBegin": 0, "blickAbsoluteEnd": -1,
                             "blickOffset": 0, "pitchOffset": 0, "mute": false, "isInstrumental": false,
                             "database": ["name": options.singer, "language": "japanese", "phoneset": "romaji", "languageOverride": "mandarin", "phonesetOverride": "xsampa",
                                          "backendType": options.generation2 ? "SVR3" : "SVR2AI", "version": options.generation2 ? "201" : (options.singer == "Mai" ? "104" : "100")],
                             "dictionary": "", "voice": ["vocalModeInherited": true, "vocalModePreset": "", "vocalModeParams": [:]], "voicePresetName": ""],
                 "groups": []]
+        if !options.scaleEnabled, var group = result["mainGroup"] as? [String: Any] { group.removeValue(forKey: "musicalScale"); result["mainGroup"] = group }
+        return result
     }
     public static func convert(input: URL, output: URL, options original: ConversionOptions) throws -> ConversionReport {
         var options = original
         options.singer = options.singer.trimmingCharacters(in: .whitespacesAndNewlines)
         options.lyric = options.lyric.trimmingCharacters(in: .whitespacesAndNewlines)
+        if options.singer.contains("|") { (options.singer, options.generation2) = try parseSinger(options.singer) }
+        guard [4,8,16,32,64].contains(options.gridDivision) else { throw ConversionError.invalid("网格只能为 4、8、16、32 或 64。") }
+        guard options.exportStems || options.exportMixDown else { throw ConversionError.invalid("至少启用分轨或混音输出。") }
+        guard [1,2].contains(options.channels), [16,24,32].contains(options.bitDepth), [44100,48000,88200,96000].contains(options.sampleRate), ["noAspiration","asFiles"].contains(options.aspiration) else { throw ConversionError.invalid("导出格式无效。") }
+        if options.scaleEnabled { guard ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"].contains(options.scaleRoot), ["Major","Minor"].contains(options.scaleType) else { throw ConversionError.invalid("调式音阶无效。") } }
         guard options.bpm.isFinite, (5...999).contains(options.bpm) else { throw ConversionError.invalid("BPM 范围为 5–999。") }
         guard (1...64).contains(options.numerator), [1, 2, 4, 8, 16, 32, 64].contains(options.denominator) else { throw ConversionError.invalid("拍号无效。") }
         guard !options.singer.isEmpty else { throw ConversionError.invalid("请输入歌姬代号，例如 Mai。") }
@@ -187,7 +217,9 @@ public enum Converter {
             for key in channels.keys.sorted() {
                 var lanes: [[Note]] = []
                 for var note in channels[key]!.sorted(by: { $0.start == $1.start ? $0.order < $1.order : $0.start < $1.start }) {
-                    note.start = snap(note.start, ppq: ppq); note.end = max(note.start + grid, snap(note.end, ppq: ppq))
+                                        note.start = options.alignNotes ? snap(note.start, ppq: ppq, division: options.gridDivision) : exact(note.start, ppq: ppq)
+                    let minimum: Int64 = options.alignNotes ? 705_600_000 / Int64(options.gridDivision / 4) : 1
+                    note.end = max(note.start + minimum, options.alignNotes ? snap(note.end, ppq: ppq, division: options.gridDivision) : exact(note.end, ppq: ppq))
                     if let lane = lanes.firstIndex(where: { $0.last!.end <= note.start }) { lanes[lane].append(note) }
                     else { lanes.append([note]) }
                     total += 1
@@ -195,13 +227,13 @@ public enum Converter {
                 for lane in lanes { tracks.append(track(lane, number: tracks.count + 1, options: options)) }
             }
         }
-        guard !tracks.isEmpty else { throw ConversionError.invalid("没有可转换的音符（打击乐默认排除）。") }
+        guard !tracks.isEmpty else { throw ConversionError.invalid("没有可转换的音符。") }
         let project: [String: Any] = ["version": 196, "uuid": uuid(),
             "time": ["meter": [["index": 0, "numerator": options.numerator, "denominator": options.denominator]], "tempo": [["position": 0, "bpm": options.bpm]], "startTimeSeconds": 0.0],
             "library": [], "tracks": tracks,
-            "renderConfig": ["destination": output.deletingLastPathComponent().path, "filename": "vocal", "numChannels": 2,
-                             "aspirationFormat": "noAspiration", "bitDepth": 24, "sampleRate": 48000, "exportMixDown": false, "exportPitch": false,
-                             "bypassPan": true, "bypassGain": true, "bypassEffects": true], "projectMixer": ["linkRoomSettings": true]]
+            "renderConfig": ["destination": output.deletingLastPathComponent().path, "filename": "vocal", "numChannels": options.channels,
+                             "aspirationFormat": options.aspiration, "bitDepth": options.bitDepth, "sampleRate": options.sampleRate, "exportMixDown": options.exportMixDown, "exportPitch": false,
+                             "bypassPan": options.bypassGainPan, "bypassGain": options.bypassGainPan, "bypassEffects": options.bypassEffects], "projectMixer": ["linkRoomSettings": true]]
         let data = try JSONSerialization.data(withJSONObject: project, options: [.sortedKeys])
         let fm = FileManager.default
         try fm.createDirectory(at: output.deletingLastPathComponent(), withIntermediateDirectories: true)
