@@ -9,7 +9,7 @@ using System.Drawing;
 using System.Web.Script.Serialization;
 
 public class MidiToVocal {
-    const long Quarter=705600000, Grid=Quarter/8;
+    const long Quarter=705600000;
     static JavaScriptSerializer json=new JavaScriptSerializer { MaxJsonLength=int.MaxValue, RecursionLimit=100 };
     static Dictionary<string,object> D(params object[] p) { var d=new Dictionary<string,object>(); for(int i=0;i<p.Length;i+=2)d[(string)p[i]]=p[i+1];return d; }
     static string Id(){return Guid.NewGuid().ToString();}
@@ -53,17 +53,21 @@ public class MidiToVocal {
         }
         return m;
     }
-    static long Snap(long tick,int ppq){return ((tick*16+ppq)/(2*ppq))*Grid;}
+    static long Snap(long tick,int ppq,int division){long steps=division/4;return ((tick*steps*2+ppq)/(2*ppq))*(Quarter/steps);}
+    static long Exact(long tick,int ppq){return (long)Math.Round((decimal)tick*Quarter/ppq,MidpointRounding.AwayFromZero);}
     static object Parameters(){var p=D();foreach(var k in new[]{"pitchDelta","vibratoEnv","loudness","tension","breathiness","voicing","gender","toneShift","mouthOpening"})p[k]=D("mode","cubic","points",new object[0]);return p;}
-    static object MakeTrack(List<Note> lane,int i,string fallback,string singer,bool generation2){
+    static object MakeTrack(List<Note> lane,int i,string fallback,string singer,bool generation2,ProjectOptions options){
         string gid=Id(),name="Melody"+i;var notes=new List<object>();
         foreach(var n in lane)notes.Add(D("uuid",Guid.NewGuid().ToString("N").Substring(0,16),"musicalType","singing","onset",n.Start,"duration",n.End-n.Start,"pitch",n.Pitch,"detune",0,"lyrics",string.IsNullOrWhiteSpace(n.Lyric)?fallback:n.Lyric,"phonemes","","accent","","attributes",D("evenSyllableDuration",true,"muted",false,"languageOverride","mandarin","phonesetOverride","xsampa")));
-        return D("name",name,"dispColor","ff7db235","dispOrder",i-1,"renderEnabled",true,
+        var result=D("name",name,"dispColor","ff7db235","dispOrder",i-1,"renderEnabled",options.ExportStems,
             "mixer",D("gainDecibel",0.0,"pan",0.0,"mute",false,"solo",false,"display",true,"fxPresetName","","fxParams",D("room",D("enabled",false),"postRoomEq",D("enabled",false),"compressor",D("enabled",false),"reverb",D("enabled",false))),
-            "mainGroup",D("name",name,"uuid",gid,"parameters",Parameters(),"vocalModes",D(),"pitchControls",new object[0],"notes",notes,"musicalScale",D("type","Major","root","C")),
+            "mainGroup",D("name",name,"uuid",gid,"parameters",Parameters(),"vocalModes",D(),"pitchControls",new object[0],"notes",notes,"musicalScale",options.ScaleEnabled?D("type",options.ScaleType,"root",options.ScaleRoot):null),
             "mainRef",D("uuid",Id(),"groupID",gid,"blickAbsoluteBegin",0,"blickAbsoluteEnd",-1,"blickOffset",0,"pitchOffset",0,"mute",false,"isInstrumental",false,"database",D("name",singer,"language","japanese","phoneset","romaji","languageOverride","mandarin","phonesetOverride","xsampa","backendType",generation2?"SVR3":"SVR2AI","version",generation2?"201":(singer=="Mai"?"104":"100")),"dictionary","","voice",D("vocalModeInherited",true,"vocalModePreset","","vocalModeParams",D()),"voicePresetName",""),"groups",new object[0]);
+        if(!options.ScaleEnabled)((System.Collections.Generic.Dictionary<string,object>)result["mainGroup"]).Remove("musicalScale");return result;
     }
-    public static string ConvertFile(string input,double bpm,int numerator,int denominator,string destination,string fallback,bool skipDrums,string singer="Mai",bool generation2=false){
+    public static string ConvertFile(string input,double bpm,int numerator,int denominator,string destination,string fallback,bool skipDrums,string singer="Mai",bool generation2=false,ProjectOptions options=null){
+        if(options==null)options=new ProjectOptions();options.Validate();
+        if(singer!=null&&singer.Contains("|")){ParseSinger(singer,out singer,out generation2);}
         if(double.IsNaN(bpm)||double.IsInfinity(bpm)||bpm<5||bpm>999)throw new Exception("BPM 范围为 5–999。");
         if(numerator<1||numerator>64||!new[]{1,2,4,8,16,32,64}.Contains(denominator))throw new Exception("拍号无效。");
         if(string.IsNullOrWhiteSpace(singer))throw new Exception("请输入歌姬代号，例如 Mai。");singer=singer.Trim();
@@ -72,27 +76,35 @@ public class MidiToVocal {
             foreach(var channel in raw.GroupBy(n=>n.Channel).OrderBy(g=>g.Key)){
                 var lanes=new List<List<Note>>();
                 foreach(var n in channel.OrderBy(n=>n.Start).ThenBy(n=>n.Order)){
-                    n.Start=Snap(n.Start,midi.Ppq);n.End=Math.Max(n.Start+Grid,Snap(n.End,midi.Ppq));
+                    n.Start=options.AlignNotes?Snap(n.Start,midi.Ppq,options.GridDivision):Exact(n.Start,midi.Ppq);n.End=Math.Max(n.Start+(options.AlignNotes?Quarter/(options.GridDivision/4):1),options.AlignNotes?Snap(n.End,midi.Ppq,options.GridDivision):Exact(n.End,midi.Ppq));
                     var lane=lanes.FirstOrDefault(l=>l[l.Count-1].End<=n.Start);if(lane==null){lane=new List<Note>();lanes.Add(lane);}lane.Add(n);total++;
                 }
-                split+=Math.Max(0,lanes.Count-1);foreach(var lane in lanes)tracks.Add(MakeTrack(lane,tracks.Count+1,fallback,singer,generation2));
+                split+=Math.Max(0,lanes.Count-1);foreach(var lane in lanes)tracks.Add(MakeTrack(lane,tracks.Count+1,fallback,singer,generation2,options));
             }
         }
-        if(tracks.Count==0)throw new Exception("MIDI 中没有可转换的音符（打击乐默认排除）。");
+        if(tracks.Count==0)throw new Exception("MIDI 中没有可转换的音符。");
         var project=D("version",196,"uuid",Id(),"time",D("meter",new[]{D("index",0,"numerator",numerator,"denominator",denominator)},"tempo",new[]{D("position",0,"bpm",bpm)},"startTimeSeconds",0.0),"library",new object[0],"tracks",tracks,
-            "renderConfig",D("destination",Path.GetDirectoryName(Path.GetFullPath(destination)),"filename","vocal","numChannels",2,"aspirationFormat","noAspiration","bitDepth",24,"sampleRate",48000,"exportMixDown",false,"exportPitch",false,"bypassPan",true,"bypassGain",true,"bypassEffects",true),"projectMixer",D("linkRoomSettings",true));
+            "renderConfig",D("destination",Path.GetDirectoryName(Path.GetFullPath(destination)),"filename","vocal","numChannels",options.Channels,"aspirationFormat",options.Aspiration,"bitDepth",options.BitDepth,"sampleRate",options.SampleRate,"exportMixDown",options.ExportMixDown,"exportPitch",false,"bypassPan",options.BypassGainPan,"bypassGain",options.BypassGainPan,"bypassEffects",options.BypassEffects),"projectMixer",D("linkRoomSettings",true));
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(destination)));
         string temp=destination+".tmp";File.WriteAllText(temp,json.Serialize(project),new UTF8Encoding(false));
         if(File.Exists(destination)){string backup=destination+"."+DateTime.Now.ToString("yyyyMMdd-HHmmss-fff")+".bak";File.Replace(temp,destination,backup);}else File.Move(temp,destination);
         return string.Format("完成：{0} 个 MIDI 音符轨 → {1} 个声部轨，共 {2} 个音符。\r\n复音新增声部：{3}。\r\n{4}\r\n保存：{5}",source,tracks.Count,total,split,string.Join("\r\n",midi.Warnings.Distinct()),destination);
     }
-    [STAThread] public static int Main(string[] args){
+    public static void ParseSinger(string value,out string name,out bool generation2){
+        var parts=(value??"").Split('|');
+        if(parts.Length>2||string.IsNullOrWhiteSpace(parts[0]))throw new Exception("歌姬格式：Mai | 1；二代格式：工程内声库名 | 2。");
+        name=parts[0].Trim();generation2=false;
+        if(parts.Length==2){var gen=parts[1].Trim();if(gen!="1"&&gen!="2")throw new Exception("歌姬代际只允许 1 或 2，例如 Mai | 1。");generation2=gen=="2";}
+        if(name.Equals("mai",StringComparison.OrdinalIgnoreCase))name="Mai";
+    }    [STAThread] public static int Main(string[] args){
         if(args.Length>0&&args[0]=="--convert"){
-            try{string[] meter=args[3].Split('/');string result=ConvertFile(args[1],double.Parse(args[2],CultureInfo.InvariantCulture),int.Parse(meter[0]),int.Parse(meter[1]),args[4],"啦",true,args.Length>5?args[5]:"Mai",args.Length>6&&args[6]=="2");File.WriteAllText(args[4]+".log.txt",result,Encoding.UTF8);return 0;}catch(Exception ex){File.WriteAllText(args.Length>4?args[4]+".error.txt":"conversion.error.txt",ex.ToString());return 1;}
+            try{string[] meter=args[3].Split('/');string result=ConvertFile(args[1],double.Parse(args[2],CultureInfo.InvariantCulture),int.Parse(meter[0]),int.Parse(meter[1]),args[4],"啦",false,args.Length>5?args[5]:"Mai",args.Length>6&&args[6]=="2");File.WriteAllText(args[4]+".log.txt",result,Encoding.UTF8);return 0;}catch(Exception ex){File.WriteAllText(args.Length>4?args[4]+".error.txt":"conversion.error.txt",ex.ToString());return 1;}
         }
         Application.EnableVisualStyles();Application.SetCompatibleTextRenderingDefault(false);
+        Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+        Application.ThreadException+=(s,e)=>{try{string folder=Path.GetDirectoryName(AppPreferences.SettingsPath);Directory.CreateDirectory(folder);File.AppendAllText(Path.Combine(folder,"error.log"),DateTime.Now.ToString("s")+" "+e.Exception+Environment.NewLine);}catch{}MessageBox.Show("操作未完成："+e.Exception.Message,"Vocal Grid",MessageBoxButtons.OK,MessageBoxIcon.Warning);};
         if(args.Length==2&&args[0]=="--preview"){
-            using(var f=new ConverterWindow())using(var image=new Bitmap(f.Width,f.Height)){f.Show();Application.DoEvents();f.DrawToBitmap(image,new Rectangle(0,0,f.Width,f.Height));image.Save(args[1],System.Drawing.Imaging.ImageFormat.Png);f.Close();}return 0;
+            using(var f=new ConverterWindow(null,false)){f.Show();Application.DoEvents();using(var image=new Bitmap(f.Width,f.Height)){f.DrawToBitmap(image,new Rectangle(0,0,f.Width,f.Height));image.Save(args[1],System.Drawing.Imaging.ImageFormat.Png);}f.Close();}return 0;
         }
         Application.Run(new ConverterWindow());return 0;
     }
