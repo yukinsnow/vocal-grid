@@ -41,9 +41,13 @@
 
 两个旁通开关均开启。“气声输出：无”指编辑器中的导出选项；转换工具本身不额外处理音频。
 
-## 下载私有云构建产物
+## 下载
 
-进入仓库 **Actions → Build native apps → 成功的构建记录 → Artifacts**。需要登录 GitHub，并具有本私有仓库的访问权限。产物保留 14 天；工作流不会发布公开 Release，也不会修改仓库可见性。
+正式版本请进入 [Releases](https://github.com/yukinsnow/vocal-grid/releases)，包含 Windows 程序、Mac 通用版 ZIP 和 SHA-256 校验文件。Release 仍属于私有仓库，下载需要登录有仓库访问权限的 GitHub 账号。
+
+### 私有 CI 构建产物
+
+进入仓库 **Actions → Build native apps → 成功的构建记录 → Artifacts**。需要登录 GitHub，并具有本私有仓库的访问权限。产物保留 14 天；常规构建不发布 Release，也不会修改仓库可见性。手动执行时填写版本标签，可将通过测试的程序发布到私有 GitHub Release。
 
 - `VocalGrid-macOS-universal`：包含装有 `Vocal Grid.app` 的 ZIP 和 SHA-256 校验文件。先解压 GitHub 下载的产物包，再解压里面的应用 ZIP。
 - `VocalGrid-Windows`：包含 `MidiToVocal.exe`。

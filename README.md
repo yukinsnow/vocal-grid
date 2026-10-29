@@ -41,9 +41,13 @@ No Electron, web runtime, third-party MIDI parser, voice database, or singing sy
 
 The two bypass switches are both enabled. “Aspiration: None” refers to the editor's export option; the converter does not apply additional audio processing.
 
-## Download from private CI
+## Downloads
 
-Open **Actions → Build native apps → a successful run → Artifacts**. Repository access and a GitHub login are required. Artifacts remain private under the repository's access controls and expire after 14 days. This workflow does not publish GitHub Releases or change repository visibility.
+For versioned packages, open [Releases](https://github.com/yukinsnow/vocal-grid/releases). Releases remain private and contain the Windows executable, universal macOS ZIP, and SHA-256 checksums. Download access requires a GitHub login with repository access.
+
+### Private CI artifacts
+
+Open **Actions → Build native apps → a successful run → Artifacts**. Repository access and a GitHub login are required. Artifacts remain private under the repository's access controls and expire after 14 days. Regular builds do not publish GitHub Releases or change repository visibility. A manual run with a release tag publishes tested binaries to a private GitHub Release.
 
 - `VocalGrid-macOS-universal`: contains a ZIP with `Vocal Grid.app` and a SHA-256 checksum. Extract the artifact download, then extract the inner app ZIP.
 - `VocalGrid-Windows`: contains `MidiToVocal.exe`.
