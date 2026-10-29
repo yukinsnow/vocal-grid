@@ -1,0 +1,68 @@
+name: Build native apps
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'macos/**'
+      - 'windows/**'
+      - 'assets/**'
+      - 'tests/**'
+      - '.github/workflows/build.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    name: macOS Universal (Apple Silicon + Intel)
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+      - name: Show toolchain
+        run: |
+          swift --version
+          xcodebuild -version
+      - name: Test and build universal app
+        run: bash macos/build-macos.sh --universal
+      - name: Check both architectures and package app
+        run: |
+          lipo -verify_arch arm64 x86_64 'macos/dist/Vocal Grid.app/Contents/MacOS/VocalGrid'
+          ditto -c -k --sequesterRsrc --keepParent 'macos/dist/Vocal Grid.app' 'VocalGrid-macOS-universal.zip'
+          shasum -a 256 VocalGrid-macOS-universal.zip > VocalGrid-macOS-universal.zip.sha256
+      - uses: actions/upload-artifact@v6
+        with:
+          name: VocalGrid-macOS-universal
+          path: |
+            VocalGrid-macOS-universal.zip
+            VocalGrid-macOS-universal.zip.sha256
+          if-no-files-found: error
+          retention-days: 14
+  windows:
+    name: Windows native
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build and test
+        shell: pwsh
+        run: |
+          ./windows/build.ps1
+          ./tests/windows/verify.ps1
+          $compiler=Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
+          & $compiler /nologo /out:dist/windows/UiSmoke.exe /reference:dist/windows/MidiToVocal.exe /reference:System.Windows.Forms.dll tests/windows/UiSmoke.cs
+          if($LASTEXITCODE -ne 0){throw 'Smoke check build failed'}
+          & ./dist/windows/UiSmoke.exe tests/windows
+          if($LASTEXITCODE -ne 0){throw 'Smoke check failed'}
+      - uses: actions/upload-artifact@v6
+        with:
+          name: VocalGrid-Windows
+          path: dist/windows/MidiToVocal.exe
+          if-no-files-found: error
+          retention-days: 14
