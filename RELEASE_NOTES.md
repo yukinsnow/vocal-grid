@@ -1,45 +1,22 @@
 ## 简体中文
 
-Vocal Grid 首个完整版本：轻量原生 MIDI → Synthesizer V Studio 2 工程转换工具。
+Vocal Grid v1.1：修复 SVP 声库与小调设置，并新增多 MIDI 合并。
 
-- Windows 原生 WinForms 界面；macOS 原生 SwiftUI 界面，支持 Apple Silicon 与 Intel。
-- 独立量化开关，4/8/16/32/64 网格，默认 32；可选工程调式音阶，默认 C 大调。
-- MIDI 输入目录作为默认输出目录，转换及导出参数自动保存在本机。
-- Windows 移除旧自绘菜单，歌姬改用纯文本输入：`Mai | 1`、`Mai 2 | 2`。
-- 导出内容、声道、气声、位深、采样率及两个旁通开关均可配置。移除跳过打击乐选项，保留所有通道。
-- 应用标注 GitHub @Yukinsnow。
-- 默认 Mai 一代，可手动填写其他歌姬代号；全部音符设置为汉语普通话。
-- 输出 `vocal.svp`，轨道依次命名为 Melody1、Melody2……，复音自动拆分声部。
-- 仅分轨，开启“旁通增益和声像”“旁通效果”，立体声、气声输出无、24 位、48000 Hz。
-- 已有工程自动备份，不修改源 MIDI。
+- 多选、追加或拖入多个 MIDI / 文件夹，同起点合并为一个 vocal.svp；按各自 PPQ 换算，轨道连续编号，默认输出到首个输入目录。
+- 声库输入直接对应 database.name：默认 Mai，二代 Mai 填 Mai 2。支持从已有 SVP 读取完整声库标记或粘贴 database JSON，移除臆测版本号。
+- 根据原始公开工程核实星尘 Infinity 一代名称 MEDIUM5·Stardust；二代标记请从本机已正确设置的 SVP 读取。
+- 自然小调实际写入 NaturalMinor，修复被 SV2 回退为大调的问题。
+- 明确量化音符与 SV2 本机工具栏网格的区别。4/8/16/32/64 量化及关闭量化均有回归测试。
+- 紧凑双栏主界面，所有设置一屏可见，无滚动条；设置继续保存在本机。
 
-### 下载与使用
-
-- **Windows**：下载 `VocalGrid-Windows.exe`，直接运行。需要系统带有 .NET Framework 4.x。
-- **macOS 13+**：下载 `VocalGrid-macOS-universal.zip`，解压后打开 `Vocal Grid.app`。同时支持 Apple Silicon 和 Intel；应用使用临时签名，尚未完成 Apple Developer ID 签名与公证。
-- `SHA256SUMS.txt` 提供两个程序包的 SHA-256 校验值。
-
-需要在本机安装并激活所选歌姬，且声库支持普通话。云端已执行构建与自动测试；尚未验证实际用户设备上的全部交互和 Synthesizer V 音频渲染。当前仓库和 Release 均仅对有权限的用户开放。
+Windows 下载 VocalGrid-Windows.exe；macOS 13+ 下载 VocalGrid-macOS-universal.zip（Apple Silicon + Intel，尚未 Apple 公证）。仓库保持私有。云端构建和自动测试通过后发布；未验证未安装声库的实际音频渲染。
 
 ## English
 
-The first release of Vocal Grid, a lightweight native MIDI-to-Synthesizer V Studio 2 project converter.
+- Merge multiple MIDI files at a common project origin, normalize each file's PPQ, retain separate lanes and number tracks continuously. Output follows the first input folder.
+- Direct database.name input (Mai / Mai 2), complete database JSON input, and Read from SVP for exact engine/version metadata.
+- Correct NaturalMinor serialization; remove speculative voice version numbers.
+- Distinguish note quantization from SV2's locally stored toolbar grid.
+- Compact two-column native UI without scrolling, with persistent local preferences.
 
-- Native WinForms UI on Windows and SwiftUI UI on macOS, with Apple Silicon and Intel support.
-- Optional quantization with 1/4, 1/8, 1/16, 1/32, or 1/64 grids; optional C-major-by-default project scale metadata.
-- Output follows the MIDI input folder by default; conversion and export preferences persist locally.
-- Windows custom popup menus removed; typed singer/generation syntax such as `Mai | 1` or `Mai 2 | 2`.
-- Configurable stems/mixdown, channels, aspiration output, bit depth, sample rate and bypass switches. All MIDI channels are preserved.
-- GitHub @Yukinsnow attribution in the app.
-- First-generation Mai by default, with manually entered singer database names; Mandarin on all notes.
-- Generate `vocal.svp` with numbered Melody tracks and automatic polyphonic voice splitting.
-- Stems only, bypass gain/pan and effects, stereo, aspiration output None, 24-bit / 48 kHz.
-- Existing projects are backed up; source MIDI files are never modified.
-
-### Downloads
-
-- **Windows**: run `VocalGrid-Windows.exe`. Requires .NET Framework 4.x.
-- **macOS 13+**: extract `VocalGrid-macOS-universal.zip` and open `Vocal Grid.app`. The universal binary supports Apple Silicon and Intel. The app is ad-hoc signed, not Developer ID signed or Apple notarized.
-- Verify the downloads with `SHA256SUMS.txt`.
-
-Install and activate the selected singer locally; Mandarin support is required. Cloud builds and automated tests are run before publishing. Full user-device interaction and Synthesizer V audio rendering have not been verified. This release remains within the private repository's access controls.
+Windows executable and macOS 13+ universal ZIP are attached with SHA-256 checksums. The repository remains private. The Mac app is ad-hoc signed, not Apple notarized. Actual rendering with unavailable voicebanks has not been verified.

@@ -20,7 +20,6 @@ No Electron, web runtime, third-party MIDI parser, voice database, or singing sy
 - Optionally quantize note starts and ends to 1/4, 1/8, 1/16, 1/32, or 1/64 notes (default 1/32). Turn alignment off to preserve MIDI timing.
 - Use a fixed BPM and time signature supplied by the user, replacing MIDI tempo/meter changes while preserving musical beat positions.
 - Name output tracks `Melody1`, `Melody2`, and so on. Split MIDI channels and overlapping notes into separate monophonic voices without discarding chord notes.
-- Default to first-generation **Mai**. Enter the exact database name and AI generation in one text field, e.g. `Mai | 1` or `Mai 2 | 2`. This name is not an activation code or product UUID.
 - Optional project scale metadata: C major by default, any chromatic root with major/minor, or disable it. This does not transpose or force notes into the scale.
 - Remember rhythm, singer, grid, scale and export choices locally between launches.
 - Set Mandarin Chinese on all notes. Preserve MIDI lyric events when available; otherwise use the editable default lyric `啦`.
@@ -60,7 +59,6 @@ The macOS package is locally ad-hoc signed. It is not Developer ID signed or not
 
 1. Open the app and select or drop a MIDI file.
 2. Enter BPM (quarter notes per minute), time signature, and optional default lyric.
-3. Leave `Mai | 1` in the text field, or enter the exact project database name followed by `| 2` for a second-generation voice. The singer name must match a local SVP project; do not invent a Stardust 2 name from the product label.
 4. Choose the destination folder, then generate `vocal.svp`.
 5. Open it in Synthesizer V Studio 2, wait for synthesis, then export the selected stems.
 
@@ -116,3 +114,12 @@ tests/windows/ Windows conversion and native drop-event checks
 ```
 
 This tool is an independent utility and is not affiliated with Dreamtonics. No proprietary voice data, activation credentials, or user MIDI/projects are included.
+
+## v1.1: format corrections and multi-file merging
+
+- Select, append or drop multiple MIDI files/folders and merge them into one `vocal.svp`. Each file starts at the same project origin; its own PPQ is normalized to musical beats. Source lanes stay separate, with continuous Melody numbering. Output follows the first input file's folder by default.
+- Compact two-column native UI with all settings visible and no scrolling.
+- Singer text maps directly to `mainRef.database.name`: `Mai` (default), `Mai 2`. Paste a complete database JSON object or use **Read from SVP** to preserve the exact engine and version from a correctly configured project. The old pipe syntax remains compatible; no speculative version 201 is assigned.
+- Natural minor now serializes as `NaturalMinor`, verified against an SV2-saved project, instead of the unrecognized `Minor` value.
+- Quantization changes note onset/duration. The grid shown in SV2's toolbar is an editor preference stored locally by SV2, not an SVP project field. This app does not modify SV2's global preferences.
+- The original SVP distributed by [shibobiiiiiii](https://www.bilibili.com/video/BV13L4y1g7s2/) confirms first-generation Stardust Infinity AI as `MEDIUM5·Stardust`, native language `mandarin`, backend `SVR2AI`. This is not evidence of the second-generation identifier; use Read from SVP for that version. Third-party score data is not bundled.
