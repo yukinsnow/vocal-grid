@@ -25,7 +25,7 @@ final class ConverterTests: XCTestCase {
         XCTAssertEqual(report.notes, 3); XCTAssertEqual(report.outputTracks, 3); XCTAssertEqual(report.sourceTracks, 2)
         let project = try load(output), tracks = try XCTUnwrap(project["tracks"] as? [[String: Any]])
         for (index, track) in tracks.enumerated() {
-            XCTAssertEqual(track["name"] as? String, "Melody\(index + 1)")
+            XCTAssertEqual(track["name"] as? String, ["poly", "poly2", "poly3"][index])
             let reference = try XCTUnwrap(track["mainRef"] as? [String: Any]), database = try XCTUnwrap(reference["database"] as? [String: Any])
             XCTAssertEqual(database["name"] as? String, "Mai"); XCTAssertEqual(database["languageOverride"] as? String, "mandarin")
             let group = try XCTUnwrap(track["mainGroup"] as? [String: Any]), notes = try XCTUnwrap(group["notes"] as? [[String: Any]])
@@ -78,7 +78,7 @@ final class ConverterTests: XCTestCase {
         XCTAssertEqual(report.sourceTracks, 2); XCTAssertEqual(report.outputTracks, 2); XCTAssertEqual(report.notes, 2)
         let project = try load(output), tracks = try XCTUnwrap(project["tracks"] as? [[String: Any]])
         for (index, track) in tracks.enumerated() {
-            XCTAssertEqual(track["name"] as? String, "Melody\(index + 1)")
+            XCTAssertEqual(track["name"] as? String, ["a", "b"][index])
             let group = try XCTUnwrap(track["mainGroup"] as? [String: Any]), note = try XCTUnwrap((group["notes"] as? [[String: Any]])?.first)
             XCTAssertEqual((note["onset"] as? NSNumber)?.int64Value, 7_056_000)
             XCTAssertEqual((group["musicalScale"] as? [String: String])?["type"], "NaturalMinor")
@@ -86,6 +86,18 @@ final class ConverterTests: XCTestCase {
             XCTAssertEqual(db["backendType"] as? String, "custom-engine"); XCTAssertEqual(db["version"] as? String, "209")
         }
         XCTAssertTrue(try Converter.readSinger(from: output).contains("209"))
+    }
+    func testFilenameCollisionReservesOriginalNames() throws {
+        let root = try workspace(), left = root.appendingPathComponent("left"), right = root.appendingPathComponent("right")
+        try FileManager.default.createDirectory(at: left, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: right, withIntermediateDirectories: true)
+        let files = [left.appendingPathComponent("钢琴.mid"), right.appendingPathComponent("钢琴.mid"), left.appendingPathComponent("钢琴2.mid")]
+        for file in files { try midi([[0,144,60,100,120,128,60,0,0,255,47,0]], format: 0).write(to: file) }
+        let output = root.appendingPathComponent("vocal.svp")
+        _ = try Converter.convert(inputs: files, output: output, options: ConversionOptions())
+        let project = try load(output), tracks = try XCTUnwrap(project["tracks"] as? [[String: Any]])
+        XCTAssertEqual(tracks.compactMap { $0["name"] as? String }, ["钢琴", "钢琴3", "钢琴2"])
+        for track in tracks { XCTAssertEqual((track["mainGroup"] as? [String: Any])?["name"] as? String, track["name"] as? String) }
     }
     func testConfigurableGridScaleExportAndPreferences() throws {
         let root = try workspace(), source = root.appendingPathComponent("exact.mid"), output = root.appendingPathComponent("vocal.svp")
