@@ -170,8 +170,8 @@ public enum Converter {
         if parts.count == 2 && !["1", "2"].contains(parts[1]) { throw ConversionError.invalid("歌姬代际只允许 1 或 2。") }
         return (parts[0].lowercased() == "mai" ? "Mai" : parts[0], (parts.count == 2 && parts[1] == "2") || (parts.count == 1 && parts[0].hasSuffix(" 2")))
     }
-    private static func track(_ notes: [Note], number: Int, options: ConversionOptions) -> [String: Any] {
-        let group = uuid(), name = "Melody\(number)"
+    private static func track(_ notes: [Note], number: Int, name: String, options: ConversionOptions) -> [String: Any] {
+        let group = uuid()
         var parameters: [String: Any] = [:]
         for key in ["pitchDelta", "vibratoEnv", "loudness", "tension", "breathiness", "voicing", "gender", "toneShift", "mouthOpening"] {
             parameters[key] = ["mode": "cubic", "points": []] as [String: Any]
@@ -234,7 +234,10 @@ public enum Converter {
         guard !options.singer.isEmpty else { throw ConversionError.invalid("请输入歌姬代号，例如 Mai。") }
         guard !options.lyric.isEmpty else { throw ConversionError.invalid("请输入默认歌词，例如：啦。") }
         var tracks: [[String: Any]] = [], total = 0, sourceCount = 0, warnings: [String] = []
+        var usedNames = Set<String>()
+        let originalNames = Set(inputs.map { $0.deletingPathExtension().lastPathComponent.lowercased() })
         for input in inputs {
+        let baseName = input.deletingPathExtension().lastPathComponent
         let (ppq, sources, fileWarnings) = try parse(Data(contentsOf: input), skipDrums: options.skipDrums)
         warnings += fileWarnings
         for raw in sources where !raw.isEmpty {
@@ -250,7 +253,15 @@ public enum Converter {
                     else { lanes.append([note]) }
                     total += 1
                 }
-                for lane in lanes { tracks.append(track(lane, number: tracks.count + 1, options: options)) }
+                for lane in lanes {
+                    let root = baseName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Melody\(tracks.count + 1)" : baseName
+                    var name = root, suffix = 2
+                    if usedNames.contains(name.lowercased()) {
+                        repeat { name = root + String(suffix); suffix += 1 } while usedNames.contains(name.lowercased()) || originalNames.contains(name.lowercased())
+                    }
+                    usedNames.insert(name.lowercased())
+                    tracks.append(track(lane, number: tracks.count + 1, name: name, options: options))
+                }
             }
         }
         }
