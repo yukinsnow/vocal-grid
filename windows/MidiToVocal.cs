@@ -56,8 +56,8 @@ public class MidiToVocal {
     static long Snap(long tick,int ppq,int division){long steps=division/4;return ((tick*steps*2+ppq)/(2*ppq))*(Quarter/steps);}
     static long Exact(long tick,int ppq){return (long)Math.Round((decimal)tick*Quarter/ppq,MidpointRounding.AwayFromZero);}
     static object Parameters(){var p=D();foreach(var k in new[]{"pitchDelta","vibratoEnv","loudness","tension","breathiness","voicing","gender","toneShift","mouthOpening"})p[k]=D("mode","cubic","points",new object[0]);return p;}
-    static object MakeTrack(List<Note> lane,int i,string fallback,string singer,bool generation2,ProjectOptions options){
-        string gid=Id(),name="Melody"+i;var notes=new List<object>();
+    static object MakeTrack(List<Note> lane,int i,string name,string fallback,string singer,bool generation2,ProjectOptions options){
+        string gid=Id();var notes=new List<object>();
         foreach(var n in lane)notes.Add(D("uuid",Guid.NewGuid().ToString("N").Substring(0,16),"musicalType","singing","onset",n.Start,"duration",n.End-n.Start,"pitch",n.Pitch,"detune",0,"lyrics",string.IsNullOrWhiteSpace(n.Lyric)?fallback:n.Lyric,"phonemes","","accent","","attributes",D("evenSyllableDuration",true,"muted",false,"languageOverride","mandarin","phonesetOverride","xsampa")));
         var result=D("name",name,"dispColor","ff7db235","dispOrder",i-1,"renderEnabled",options.ExportStems,
             "mixer",D("gainDecibel",0.0,"pan",0.0,"mute",false,"solo",false,"display",true,"fxPresetName","","fxParams",D("room",D("enabled",false),"postRoomEq",D("enabled",false),"compressor",D("enabled",false),"reverb",D("enabled",false))),
@@ -76,7 +76,10 @@ public class MidiToVocal {
         if(numerator<1||numerator>64||!new[]{1,2,4,8,16,32,64}.Contains(denominator))throw new Exception("拍号无效。");
         if(string.IsNullOrWhiteSpace(singer))throw new Exception("请输入歌姬代号，例如 Mai。");singer=singer.Trim();
         var tracks=new List<object>();int source=0,total=0,split=0;var warnings=new List<string>();
+        var usedNames=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var originalNames=new HashSet<string>(inputs.Select(Path.GetFileNameWithoutExtension),StringComparer.OrdinalIgnoreCase);
         foreach(string input in inputs.Distinct(StringComparer.OrdinalIgnoreCase)){
+        string baseName=Path.GetFileNameWithoutExtension(input);
         var midi=Parse(input,skipDrums);warnings.AddRange(midi.Warnings);
         foreach(var raw in midi.Tracks){if(raw.Count==0)continue;source++;
             foreach(var channel in raw.GroupBy(n=>n.Channel).OrderBy(g=>g.Key)){
@@ -85,7 +88,11 @@ public class MidiToVocal {
                     n.Start=options.AlignNotes?Snap(n.Start,midi.Ppq,options.GridDivision):Exact(n.Start,midi.Ppq);n.End=Math.Max(n.Start+(options.AlignNotes?Quarter/(options.GridDivision/4):1),options.AlignNotes?Snap(n.End,midi.Ppq,options.GridDivision):Exact(n.End,midi.Ppq));
                     var lane=lanes.FirstOrDefault(l=>l[l.Count-1].End<=n.Start);if(lane==null){lane=new List<Note>();lanes.Add(lane);}lane.Add(n);total++;
                 }
-                split+=Math.Max(0,lanes.Count-1);foreach(var lane in lanes)tracks.Add(MakeTrack(lane,tracks.Count+1,fallback,singer,generation2,options));
+                split+=Math.Max(0,lanes.Count-1);foreach(var lane in lanes){
+                    string root=string.IsNullOrWhiteSpace(baseName)?"Melody"+(tracks.Count+1):baseName,name=root;int suffix=2;
+                    if(usedNames.Contains(name)){do{name=root+suffix++;}while(usedNames.Contains(name)||originalNames.Contains(name));}
+                    usedNames.Add(name);tracks.Add(MakeTrack(lane,tracks.Count+1,name,fallback,singer,generation2,options));
+                }
             }
         }
         }
