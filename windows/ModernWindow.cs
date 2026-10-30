@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Drawing;
@@ -26,7 +26,7 @@ public class ConverterWindow : Form {
         this.settingsPath=settingsPath??AppPreferences.SettingsPath;this.persist=persist;
         string warning;var pref=AppPreferences.Load(this.settingsPath,out warning);var opt=pref.Options;
 
-        Text="Vocal Grid · MIDI 转 SVP · v1.1.1";ClientSize=new Size(860,600);AutoScaleMode=AutoScaleMode.None;
+        Text="Vocal Grid · MIDI 转 SVP · v1.1.2";ClientSize=new Size(860,600);AutoScaleMode=AutoScaleMode.None;
         BackColor=Color.FromArgb(244,247,248);ForeColor=Ink;Font=new Font("Microsoft YaHei UI",9F);
         StartPosition=FormStartPosition.CenterScreen;MinimumSize=new Size(876,639);MaximizeBox=false;
         Icon=Icon.ExtractAssociatedIcon(Application.ExecutablePath)??SystemIcons.Application;
@@ -137,3 +137,4 @@ public class ConverterWindow : Form {
         protected override void OnPaint(PaintEventArgs e){e.Graphics.SmoothingMode=SmoothingMode.AntiAlias;e.Graphics.Clear(Parent.BackColor);Color fill=!Enabled?Color.FromArgb(192,209,206):Primary?(hover?Color.FromArgb(9,109,97):Accent):(hover?Color.FromArgb(225,237,235):Color.FromArgb(237,244,243));using(var p=Round(new Rectangle(0,0,Width-1,Height-1),9))using(var b=new SolidBrush(fill))e.Graphics.FillPath(b,p);TextRenderer.DrawText(e.Graphics,Text,Font,ClientRectangle,Primary?Color.White:Accent,TextFormatFlags.HorizontalCenter|TextFormatFlags.VerticalCenter);if(Focused)ControlPaint.DrawFocusRectangle(e.Graphics,new Rectangle(4,4,Width-8,Height-8));}
     }
 }
+
