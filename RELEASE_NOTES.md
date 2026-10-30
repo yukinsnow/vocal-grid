@@ -1,21 +1,16 @@
 ## 简体中文
 
-Vocal Grid v1.1.1
+Vocal Grid v1.1.2
 
-- 缩短并增高顶部“多 MIDI → SVP”标题区域，避免文字被截断。
-- “从 SVP 读取”后仅显示声库 name，内部继续保留完整引擎和版本标记；重启可恢复，手动改名会替换旧标记。
-- 移除声库输入框下方示例说明，默认仍为 Mai 一代。
-- 调式显示名称统一为“自然大调”“自然小调”。
-- Windows Release 改为 VocalGrid-Windows.zip，解压后运行 VocalGrid-Windows.exe。Mac 保持通用版 ZIP，另附 SHA-256 校验文件。
+- 更换应用图标，采用与本机 Synthesizer V 图标一致的亮绿 #78E21B 与银白 #DDDDDD，搭配深灰底色。
+- 新图标以分段 V 形与音频波形组成，保留 Vocal Grid 自身辨识度。
+- 同步 Windows 多尺寸 ICO、macOS 高分辨率图标、界面内图标及 README 图标；源码提供 SVG 和可重建图标的 C# 文件。
 
-保留多 MIDI 同起点合并、量化、普通话、全部导出设置及本机记忆。仓库保持私有。Mac 应用尚未 Apple 公证。
+Windows 下载 VocalGrid-Windows.zip，解压后运行 VocalGrid-Windows.exe。macOS 下载 VocalGrid-macOS-universal.zip（Apple Silicon + Intel，尚未 Apple 公证）。保留 v1.1.1 全部功能及设置；仓库保持私有。
 
 ## English
 
-- Prevent header text clipping with a shorter title and more vertical space.
-- Show only the singer name after reading an SVP; retain engine/version metadata internally across restarts. Manual name edits replace the imported marker.
-- Remove the singer example hint; first-generation Mai remains the default.
-- Rename scale labels to Natural Major / Natural Minor in the Chinese UI.
-- Package Windows as VocalGrid-Windows.zip. Extract it and run VocalGrid-Windows.exe. macOS remains a universal ZIP; SHA-256 checksums are attached.
+- Replace the app icon with a segmented V and waveform design, using bright green #78E21B and silver #DDDDDD sampled from the installed Synthesizer V icon.
+- Update Windows multi-size ICO, high-resolution macOS icon, in-app icon and README image. SVG and C# generation source are included.
 
-The repository remains private. The Mac app is not Apple notarized.
+Windows and macOS universal ZIPs are attached with SHA-256 checksums. Existing functionality and local preferences are preserved. The repository remains private; the Mac app is not Apple notarized.
