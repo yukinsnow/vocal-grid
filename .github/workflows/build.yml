@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Optional private release tag, e.g. v1.0.0; leave blank for artifacts only'
+        description: 'Optional release tag, e.g. v1.0.0; leave blank for artifacts only'
         required: false
         default: ''
         type: string
@@ -76,7 +76,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
   release:
-    name: Publish private release
+    name: Publish release
     if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
     needs: [macos, windows]
     runs-on: ubuntu-latest
@@ -93,7 +93,7 @@ jobs:
         with:
           name: VocalGrid-Windows
           path: release
-      - name: Create private release with tested binaries
+      - name: Create release with tested binaries
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -102,7 +102,6 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Use a tag such as v1.0.0'; exit 1; }
-          [[ "$(gh api "repos/$GH_REPO" --jq .private)" == true ]] || { echo 'Refusing to publish: repository must remain private'; exit 1; }
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             echo 'Release already exists; refusing to replace it.'
             exit 1
