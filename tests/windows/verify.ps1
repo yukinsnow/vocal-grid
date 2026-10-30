@@ -21,7 +21,7 @@ Assert ($j.tracks.Count -eq 3) 'Polyphony split failed'
 Assert ($j.time.tempo[0].bpm -eq 135 -and $j.time.meter[0].numerator -eq 7 -and $j.time.meter[0].denominator -eq 8) 'Time settings failed'
 for($i=0;$i -lt $j.tracks.Count;$i++){
   $t=$j.tracks[$i]
-  Assert ($t.name -eq ('Melody'+($i+1))) 'Track naming failed'
+  Assert ($t.name -eq (@('poly','poly2','poly3')[$i])) 'Filename track naming failed'
   Assert ($t.mainRef.database.name -eq 'Mai' -and $t.mainRef.database.languageOverride -eq 'mandarin') 'Voice/language failed'
   foreach($n in $t.mainGroup.notes){Assert ($n.onset%88200000 -eq 0 -and $n.duration%88200000 -eq 0 -and $n.duration -gt 0) 'Grid failed'}
 }

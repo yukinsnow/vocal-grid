@@ -28,7 +28,7 @@ class UiSmoke {
   string raw="{\"name\":\"Example 2\",\"backendType\":\"custom-engine\",\"version\":\"209\",\"language\":\"mandarin\",\"phoneset\":\"xsampa\"}";
   string merged=Path.Combine(root,"merged.svp");MidiToVocal.ConvertFiles(new[]{midi,exact},120,4,4,merged,"啦",false,raw,false,new ProjectOptions{AlignNotes=false,ScaleType="Minor"});
   var mergedTracks=((IEnumerable)Load(merged)["tracks"]).Cast<Dictionary<string,object>>().ToArray();Check(mergedTracks.Length==4,"Merge must preserve source lanes");
-  for(int i=0;i<mergedTracks.Length;i++)Check((string)mergedTracks[i]["name"]=="Melody"+(i+1),"Merged numbering");
+  var expectedNames=new[]{"poly","poly2","poly3","exact"};for(int i=0;i<mergedTracks.Length;i++)Check((string)mergedTracks[i]["name"]==expectedNames[i],"Merged filename names");
   var imported=(Dictionary<string,object>)mergedTracks[0]["mainRef"];var importedDb=(Dictionary<string,object>)imported["database"];Check((string)importedDb["backendType"]=="custom-engine"&&(string)importedDb["version"]=="209","Raw database modified");
   Check(MidiToVocal.ReadSingerFromProject(merged).Contains("209"),"Read voice from SVP");
   using(var voiceUi=new ConverterWindow(settings,false)){
@@ -40,7 +40,12 @@ class UiSmoke {
   using(var restoredVoice=new ConverterWindow(settings,false)){Check(Field<TextBox>(restoredVoice,"singer").Text=="Example 2"&&restoredVoice.CapturePreferences().Singer.Contains("209"),"Imported voice restore");}
   var lastGroup=(Dictionary<string,object>)mergedTracks.Last()["mainGroup"];var lastNote=((IEnumerable)lastGroup["notes"]).Cast<Dictionary<string,object>>().First();Check(System.Convert.ToInt64(lastNote["onset"])==7056000,"Per-file PPQ normalization");
   using(var compact=new ConverterWindow(settings,false)){compact.Show();Application.DoEvents();Check(!Field<Panel>(compact,"content").AutoScroll,"Scrolling layout retained");Check(compact.Height<=Screen.FromControl(compact).WorkingArea.Height,"Window outside work area");compact.Close();}
-  Console.WriteLine("PASS: controls, persistence, five quantization grids, NaturalMinor, direct/raw singer markers, multi-MIDI merge with mixed PPQ, compact screen fit.");
+  string left=Path.Combine(root,"left"),right=Path.Combine(root,"right");Directory.CreateDirectory(left);Directory.CreateDirectory(right);
+  string piano=Path.Combine(left,"钢琴.mid"),duplicate=Path.Combine(right,"钢琴.mid"),originalSuffix=Path.Combine(left,"钢琴2.mid");File.Copy(exact,piano,true);File.Copy(exact,duplicate,true);File.Copy(exact,originalSuffix,true);
+  MidiToVocal.ConvertFiles(new[]{piano,duplicate,originalSuffix},120,4,4,merged,"啦",false);
+  var named=((IEnumerable)Load(merged)["tracks"]).Cast<Dictionary<string,object>>().ToArray();Check(named.Select(t=>(string)t["name"]).SequenceEqual(new[]{"钢琴","钢琴3","钢琴2"}),"Name collisions must reserve original names");
+  Check(named.All(t=>(string)t["name"]==(string)((Dictionary<string,object>)t["mainGroup"])["name"]),"Group names mismatch");
+  Console.WriteLine("PASS: controls, persistence, grids/scales/voices, mixed-PPQ merge, unique filename naming and compact layout.");
  }
 }
 
