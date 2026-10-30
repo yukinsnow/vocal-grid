@@ -19,7 +19,7 @@ No Electron, web runtime, third-party MIDI parser, voice database, or singing sy
 
 - Optionally quantize note starts and ends to 1/4, 1/8, 1/16, 1/32, or 1/64 notes (default 1/32). Turn alignment off to preserve MIDI timing.
 - Use a fixed BPM and time signature supplied by the user, replacing MIDI tempo/meter changes while preserving musical beat positions.
-- Name output tracks `Melody1`, `Melody2`, and so on. Split MIDI channels and overlapping notes into separate monophonic voices without discarding chord notes.
+- Name output tracks after the MIDI filename without its extension; add numeric suffixes only for duplicates. Split MIDI channels and overlapping notes into separate monophonic voices without discarding chord notes.
 - Optional project scale metadata: C major by default, any chromatic root with major/minor, or disable it. This does not transpose or force notes into the scale.
 - Remember rhythm, singer, grid, scale and export choices locally between launches.
 - Set Mandarin Chinese on all notes. Preserve MIDI lyric events when available; otherwise use the editable default lyric `啦`.
@@ -44,11 +44,11 @@ Export content supports stems only, mixdown only, or both. The two bypass switch
 
 ## Downloads
 
-For versioned packages, open [Releases](https://github.com/yukinsnow/vocal-grid/releases). Releases remain private and contain the Windows executable, universal macOS ZIP, and SHA-256 checksums. Download access requires a GitHub login with repository access.
+For versioned packages, open [Releases](https://github.com/yukinsnow/vocal-grid/releases). Public releases contain Windows and universal macOS ZIPs plus SHA-256 checksums.
 
-### Private CI artifacts
+### CI artifacts
 
-Open **Actions → Build native apps → a successful run → Artifacts**. Repository access and a GitHub login are required. Artifacts remain private under the repository's access controls and expire after 14 days. Regular builds do not publish GitHub Releases or change repository visibility. A manual run with a release tag publishes tested binaries to a private GitHub Release.
+Open **Actions → Build native apps → a successful run → Artifacts**. Repository access and a GitHub login are required. Artifacts expire after 14 days. Regular builds do not publish GitHub Releases or change repository visibility. A manual run with a release tag publishes tested binaries to a GitHub Release.
 
 - `VocalGrid-macOS-universal`: contains a ZIP with `Vocal Grid.app` and a SHA-256 checksum. Extract the artifact download, then extract the inner app ZIP.
 - `VocalGrid-Windows`: contains `MidiToVocal.exe`.
@@ -97,7 +97,7 @@ Output: `macos/dist/Vocal Grid.app`. The script runs the test suite before compi
 
 ## Cloud builds
 
-The GitHub Actions workflow runs on changes to app sources, tests, assets, or the workflow itself. It can also be triggered manually with **Run workflow**. It tests and builds both native apps, packages a universal macOS app, and uploads private artifacts. It uses standard GitHub-hosted runners; usage is subject to the account's private Actions allowance and billing settings. No secrets or Apple developer certificates are required.
+The GitHub Actions workflow runs on changes to app sources, tests, assets, or the workflow itself. It can also be triggered manually with **Run workflow**. It tests and builds both native apps, packages a universal macOS app, and uploads build artifacts. It uses standard GitHub-hosted runners; usage is subject to the account's private Actions allowance and billing settings. No secrets or Apple developer certificates are required.
 
 ## MIDI scope
 
@@ -110,7 +110,7 @@ windows/       Native Windows UI and converter
 macos/         Swift package, native Mac UI, converter, tests, packaging
 assets/        Shared icon artwork and Windows app resources
 tests/windows/ Windows conversion and native drop-event checks
-.github/       Private artifact build workflow
+.github/       Native artifact build workflow
 ```
 
 This tool is an independent utility and is not affiliated with Dreamtonics. No proprietary voice data, activation credentials, or user MIDI/projects are included.
@@ -128,4 +128,9 @@ This tool is an independent utility and is not affiliated with Dreamtonics. No p
 ## v1.1.1
 
 The voice input displays only the name after Read from SVP, while preserving imported engine/version metadata internally and across restarts. Manual edits replace it. First-generation Mai remains the default. Windows releases now ship as VocalGrid-Windows.zip; extract and run VocalGrid-Windows.exe. The header is shorter with additional height to prevent clipping, and the Chinese scale labels are Natural Major / Natural Minor.
+
+
+## v1.1.3 track names
+
+Tracks use the MIDI filename without its extension. Duplicate names, including split polyphonic lanes, receive numeric suffixes starting at 2. Matching is case-insensitive and reserves other input filenames, so Piano.mid, another Piano.mid and Piano2.mid become Piano, Piano3 and Piano2. Embedded MIDI track names are not used. The repository and releases are now public.
 

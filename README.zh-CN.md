@@ -19,7 +19,7 @@
 
 - 可独立开启/关闭音符对齐。网格支持 4/8/16/32/64 分音符，默认 32；关闭时保留 MIDI 的原始时间位置。
 - 使用用户输入的固定 BPM、拍号，覆盖 MIDI 原有速度和拍号变化，保留音符的音乐节拍位置。
-- 输出轨命名为 `Melody1`、`Melody2`……；不同 MIDI 通道分开，复音自动拆成独立单声部，保留和弦中的音符。
+- 输出轨优先使用 MIDI 文件名（去扩展名），重名时追加数字（如 `Piano2`、`Piano3`）；不同 MIDI 通道分开，复音自动拆成独立单声部，保留和弦中的音符。
 - 默认 **Mai 一代**。文本输入直接对应 SVP 的 `mainRef.database.name`：`Mai`、`Mai 2`。可粘贴完整 `database` JSON，或点击“从 SVP 读取”，保留真实的声库引擎和版本。代号不是激活码或商品 UUID。
 - 可选调式音阶：默认 C 大调，支持 12 个主音的自然大调/自然小调（SVP 字段 `NaturalMinor`），也可关闭。只写入工程音阶信息，不修改音符音高。
 - 节奏、声库、量化、音阶、导出参数自动保存在本机，下次启动恢复。
@@ -45,7 +45,7 @@
 
 ## 下载
 
-正式版本请进入 [Releases](https://github.com/yukinsnow/vocal-grid/releases)，包含 Windows 程序、Mac 通用版 ZIP 和 SHA-256 校验文件。Release 仍属于私有仓库，下载需要登录有仓库访问权限的 GitHub 账号。
+正式版本请进入 [Releases](https://github.com/yukinsnow/vocal-grid/releases)，包含 Windows 程序、Mac 通用版 ZIP 和 SHA-256 校验文件。仓库及 Release 已公开，下载无需仓库访问权限。
 
 ### 私有 CI 构建产物
 
@@ -132,3 +132,7 @@ tests/windows/ Windows 转换测试和原生拖放事件检查
 
 从 SVP 读取后输入框只显示声库名称，完整引擎及版本信息在内部保留并随本机设置保存；手动改名后使用新名称。已移除下方示例说明，默认 Mai 一代。界面调式名称为自然大调 / 自然小调。Windows Release 下载 VocalGrid-Windows.zip，解压后运行 VocalGrid-Windows.exe。
 
+
+## v1.1.3 轨道命名
+
+使用 MIDI 文件名（不含扩展名）作为轨道名。同一文件拆出的多个声部及不同目录里的同名 MIDI 会在名称后追加数字，从 2 开始；按不区分大小写去重，并避开其他输入文件的原名。例如 Piano.mid、另一个 Piano.mid、Piano2.mid 会得到 Piano、Piano3、Piano2。内部 MIDI Track Name 事件不作为命名来源。

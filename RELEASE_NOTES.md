@@ -1,16 +1,20 @@
 ## 简体中文
 
-Vocal Grid v1.1.2
+Vocal Grid v1.1.3
 
-- 更换应用图标，采用与本机 Synthesizer V 图标一致的亮绿 #78E21B 与银白 #DDDDDD，搭配深灰底色。
-- 新图标以分段 V 形与音频波形组成，保留 Vocal Grid 自身辨识度。
-- 同步 Windows 多尺寸 ICO、macOS 高分辨率图标、界面内图标及 README 图标；源码提供 SVG 和可重建图标的 C# 文件。
+- 轨道名改为 MIDI 文件名（去掉扩展名）。
+- 同名文件或复音拆分产生的同名声部，在名称后追加数字，从 2 开始；不区分大小写，并避开其他输入文件的原名。
+- 示例：Piano.mid、另一个 Piano.mid、Piano2.mid → Piano、Piano3、Piano2。
+- 同步 Windows 与 Mac 行为；现有量化、声库、音阶、导出及本机设置保持不变。
+- 发布流程适配已公开仓库。
 
-Windows 下载 VocalGrid-Windows.zip，解压后运行 VocalGrid-Windows.exe。macOS 下载 VocalGrid-macOS-universal.zip（Apple Silicon + Intel，尚未 Apple 公证）。保留 v1.1.1 全部功能及设置；仓库保持私有。
+下载 Windows ZIP 或 macOS 通用版 ZIP。Mac 应用尚未 Apple 公证。
 
 ## English
 
-- Replace the app icon with a segmented V and waveform design, using bright green #78E21B and silver #DDDDDD sampled from the installed Synthesizer V icon.
-- Update Windows multi-size ICO, high-resolution macOS icon, in-app icon and README image. SVG and C# generation source are included.
+- Name output tracks after the MIDI filename without its extension.
+- Add numeric suffixes starting at 2 for duplicate names and split polyphonic lanes, matching case-insensitively and reserving original input filenames.
+- Example: Piano.mid, another Piano.mid and Piano2.mid produce Piano, Piano3 and Piano2.
+- Apply the same behavior on Windows and macOS; adapt publishing to the now-public repository.
 
-Windows and macOS universal ZIPs are attached with SHA-256 checksums. Existing functionality and local preferences are preserved. The repository remains private; the Mac app is not Apple notarized.
+Windows and universal macOS ZIPs are attached with checksums. The Mac app is not Apple notarized.
